@@ -1,4 +1,15 @@
 
+# 缓存变量
+association_cache <- list()
+study_cache <- list()
+trait_cache <- list()
+snp_cache <- list()
+ancestry_cache <- list()
+publication_cache <- list()
+genomicContext_cache <- list()
+gene_cache <- list()
+locus_cache <- list()
+
 ask_yes_no_question <- function(question) {
   yes_no_answer <- ""
   while (toupper(yes_no_answer) != "YES" && toupper(yes_no_answer) != "NO") {
@@ -115,4 +126,19 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
     stop(paste("The request for", url, "failed: response code was", httr::status_code(r), 
               "content was\n", httr::content(r, as = "text")))
   }
+}
+
+#' Get association data
+#'
+#' This function retrieves association data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of association objects retrieved from the API
+#'
+#' @export
+#'
+get_association <- function(url, cached = TRUE) {
+  return(get_data(url, cache_impl = association_cache, cached = cached, type = "associations"))
 }
