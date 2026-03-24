@@ -15,4 +15,7 @@ License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
-    httr2 
+    httr,
+    jsonlite,
+    utils
+RoxygenNote: 7.3.3
