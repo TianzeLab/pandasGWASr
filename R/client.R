@@ -1,14 +1,5 @@
 
-# 缓存变量
-association_cache <- list()
-study_cache <- list()
-trait_cache <- list()
-snp_cache <- list()
-ancestry_cache <- list()
-publication_cache <- list()
-genomicContext_cache <- list()
-gene_cache <- list()
-locus_cache <- list()
+# 缓存变量（在zzz.R中定义）
 
 ask_yes_no_question <- function(question) {
   yes_no_answer <- ""
@@ -23,7 +14,7 @@ ask_yes_no_question <- function(question) {
 #' This function retrieves data from the GWAS API, handling caching and pagination.
 #'
 #' @param url The URL to request data from
-#' @param cache_impl A named list used for caching responses
+#' @param cache_impl A cachem cache object used for caching responses
 #' @param cached Logical value indicating whether to use cached responses
 #' @param type The type of data to retrieve (e.g., "associations", "studies")
 #'
@@ -37,96 +28,110 @@ ask_yes_no_question <- function(question) {
 #' @keywords internal
 #'
 get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
-
   # 检查缓存
-  if (!is.null(cache_impl) && cached && url %in% names(cache_impl)) {
-    r <- cache_impl[[url]]
-  } else {
-    # 发送HTTP请求，设置最大重试次数为5
-    r <- httr2::request(url) %>%
-      httr2::req_headers(Accept = "application/json") %>%
-      httr2::req_perform()
+  if (!is.null(cache_impl) && cached) {
+    cached_result <- cache_impl$get(url)
+    if (!is.null(cached_result)) {
+      return(cached_result)
+    }
   }
+  
+  # 发送HTTP请求
+  r <- httr2::request(url) %>%
+    httr2::req_headers(Accept = "application/json") %>%
+    httr2::req_perform()
   
   # 处理响应
   if (httr2::resp_status(r) == 200) {
     content <- httr2::resp_body_string(r)
     if (nchar(content) == 0) {
-      return(list())
+      result <- list()
+    } else {
+      # 解析JSON
+      parsed_data <- jsonlite::fromJSON(content, simplifyVector = FALSE)
+      
+      # 处理嵌入式数据
+      if (!is.null(parsed_data[["_embedded"]])) {
+        results_list <- parsed_data[["_embedded"]][[type]]
+        
+        # 处理分页
+        if (!is.null(parsed_data[["_links"]])) {
+          next_link <- parsed_data[["_links"]][["next"]]
+          if (!is.null(next_link)) {
+            # 显示进度条
+            total_elements <- parsed_data[["page"]][["totalElements"]]
+            progress <- length(results_list)
+            pb <- progress::progress_bar$new(
+              format = "  downloading [:bar] :percent eta: :eta",
+              total = total_elements,
+              clear = FALSE,
+              width = 60
+            )
+            pb$update(progress / total_elements)
+            
+            # 循环获取下一页
+            while (!is.null(next_link)) {
+              next_url <- next_link[["href"]]
+              
+              # 检查缓存
+              next_result <- NULL
+              if (!is.null(cache_impl) && cached) {
+                next_result <- cache_impl$get(next_url)
+              }
+              
+              if (!is.null(next_result)) {
+                # 使用缓存的结果
+                results_list <- c(results_list, next_result)
+              } else {
+                # 发送HTTP请求
+                r_next <- httr2::request(next_url) %>%
+                  httr2::req_headers(Accept = "application/json") %>%
+                  httr2::req_perform()
+                
+                if (httr2::resp_status(r_next) == 200) {
+                  # 解析下一页数据
+                  content_next <- httr2::resp_body_string(r_next)
+                  parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
+                  
+                  # 扩展结果列表
+                  page_results <- parsed_data_next[["_embedded"]][[type]]
+                  results_list <- c(results_list, page_results)
+                  
+                  # 缓存下一页结果
+                  if (!is.null(cache_impl)) {
+                    cache_impl$set(next_url, page_results)
+                  }
+                } else if (httr2::resp_status(r_next) == 404) {
+                  result <- list()
+                  break
+                } else {
+                  stop(paste("The request for", next_url, "failed: response code was", httr2::resp_status(r_next), 
+                            "content was\n", httr2::resp_body_string(r_next)))
+                }
+              }
+              
+              # 更新进度条
+              progress <- length(results_list)
+              pb$update(progress / total_elements)
+              
+              # 获取下一页链接
+              next_link <- parsed_data_next[["_links"]][["next"]]
+            }
+          }
+        }
+        
+        result <- results_list
+      } else {
+        result <- list(parsed_data)
+      }
     }
     
     # 缓存响应
     if (!is.null(cache_impl)) {
-      cache_impl[[url]] <- r
+      cache_impl$set(url, result)
     }
     
-    # 解析JSON
-    parsed_data <- jsonlite::fromJSON(content, simplifyVector = FALSE)
-    
-    # 处理嵌入式数据
-    if (!is.null(parsed_data[["_embedded"]])) {
-      results_list <- parsed_data[["_embedded"]][[type]]
-      
-      # 处理分页
-      if (!is.null(parsed_data[["_links"]])) {
-        next_link <- parsed_data[["_links"]][["next"]]
-        if (!is.null(next_link)) {
-          # 显示进度条
-          total_elements <- parsed_data[["page"]][["totalElements"]]
-          progress <- length(results_list)
-          pb <- progress::progress_bar$new(
-            format = "  downloading [:bar] :percent eta: :eta",
-            total = total_elements,
-            clear = FALSE,
-            width = 60
-          )
-          pb$update(progress / total_elements)
-          
-          # 循环获取下一页
-          while (!is.null(next_link)) {
-            next_url <- next_link[["href"]]
-            
-            # 检查缓存
-            if (!is.null(cache_impl) && cached && next_url %in% names(cache_impl)) {
-              r_next <- cache_impl[[next_url]]
-            } else {
-              r_next <- httr2::request(next_url) %>%
-                httr2::req_headers(Accept = "application/json") %>%
-                httr2::req_perform()
-              
-              if (httr2::resp_status(r_next) == 200) {
-                if (!is.null(cache_impl)) {
-                  cache_impl[[next_url]] <- r_next
-                }
-              } else if (httr2::resp_status(r_next) == 404) {
-                return(list())
-              } else {
-                stop(paste("The request for", next_url, "failed: response code was", httr2::resp_status(r_next), 
-                          "content was\n", httr2::resp_body_string(r_next)))
-              }
-            }
-            
-            # 解析下一页数据
-            content_next <- httr2::resp_body_string(r_next)
-            parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
-            
-            # 扩展结果列表
-            results_list <- c(results_list, parsed_data_next[["_embedded"]][[type]])
-            
-            # 更新进度条
-            progress <- length(results_list)
-            pb$update(progress / total_elements)
-            
-            # 获取下一页链接
-            next_link <- parsed_data_next[["_links"]][["next"]]
-          }
-        }
-      }
-      
-      return(results_list)
-    } else {
-      return(list(parsed_data))
-    }
+    return(result)
   } else if (httr2::resp_status(r) == 404) {
     return(list())
   } else {
@@ -144,7 +149,8 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
 #'
 #' @return A list of association objects retrieved from the API
 #'
+#' @export
 #'
 get_association <- function(url, cached = TRUE) {
-  return(get_data(url, cache_impl = association_cache, cached = cached, type = "associations"))
+  return(get_data(url, cache_impl = .pandasGWASr$association_cache, cached = cached, type = "associations"))
 }
