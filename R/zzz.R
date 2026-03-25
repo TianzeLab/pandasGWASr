@@ -3,27 +3,31 @@
 # 定义包全局环境
 .pandasGWASr <- new.env(parent = emptyenv())
 
-# 初始化缓存变量
+#' @importFrom cachem cache_mem
+#' @noRd
 .onLoad <- function(libname, pkgname) {
-  # 加载必要的包
-  require(cachem)
-  
   # 设置缓存过期时间为24小时（单位：秒）
   ttl <- 60 * 60 * 24
   
   # 创建包全局内存TTL缓存
-  .pandasGWASr$association_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$study_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$trait_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$snp_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$ancestry_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$publication_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$genomicContext_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$gene_cache <- cachem::cache_mem(max_age = ttl)
-  .pandasGWASr$locus_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$association_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$study_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$trait_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$snp_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$ancestry_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$publication_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$genomicContext_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$gene_cache <- cache_mem(max_age = ttl)
+  .pandasGWASr$locus_cache <- cache_mem(max_age = ttl)
 }
 
-# 定义清除缓存的函数
+#' Clear cache
+#'
+#' This function clears the cache for the specified data type or all caches.
+#'
+#' @param cache_name The name of the cache to clear, or "all" to clear all caches
+#'
+#' @noRd
 clear_cache <- function(cache_name = "all") {
   if (cache_name == "all") {
     # 清除所有缓存

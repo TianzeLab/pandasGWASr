@@ -25,7 +25,7 @@ ask_yes_no_question <- function(question) {
 #' @importFrom jsonlite fromJSON
 #' @importFrom progress progress_bar
 #'
-#' @keywords internal
+#' @noRd
 #'
 get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
   # 检查缓存
