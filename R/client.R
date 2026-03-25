@@ -29,9 +29,10 @@ ask_yes_no_question <- function(question) {
 #'
 #' @return A list of data objects retrieved from the API
 #'
-#' @importFrom httr GET status_code content add_headers config
+#' @importFrom httr2 request req_headers req_perform resp_status
+#' @importFrom httr2 resp_body_string 
 #' @importFrom jsonlite fromJSON
-#' @importFrom utils txtProgressBar setTxtProgressBar
+#' @importFrom progress progress_bar
 #'
 #' @keywords internal
 #'
@@ -42,12 +43,14 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
     r <- cache_impl[[url]]
   } else {
     # 发送HTTP请求，设置最大重试次数为5
-    r <- httr::GET(url, httr::config(connecttimeout = 30), httr::add_headers(Accept = "application/json"))
+    r <- httr2::request(url) %>%
+      httr2::req_headers(Accept = "application/json") %>%
+      httr2::req_perform()
   }
   
   # 处理响应
-  if (httr::status_code(r) == 200) {
-    content <- httr::content(r, as = "text")
+  if (httr2::resp_status(r) == 200) {
+    content <- httr2::resp_body_string(r)
     if (nchar(content) == 0) {
       return(list())
     }
@@ -71,8 +74,13 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
           # 显示进度条
           total_elements <- parsed_data[["page"]][["totalElements"]]
           progress <- length(results_list)
-          utils::txtProgressBar(min = 0, max = total_elements, style = 3)
-          utils::setTxtProgressBar(utils::txtProgressBar(min = 0, max = total_elements, style = 3), progress)
+          pb <- progress::progress_bar$new(
+            format = "  downloading [:bar] :percent eta: :eta",
+            total = total_elements,
+            clear = FALSE,
+            width = 60
+          )
+          pb$update(progress / total_elements)
           
           # 循环获取下一页
           while (!is.null(next_link)) {
@@ -82,22 +90,24 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
             if (!is.null(cache_impl) && cached && next_url %in% names(cache_impl)) {
               r_next <- cache_impl[[next_url]]
             } else {
-              r_next <- httr::GET(next_url, httr::config(connecttimeout = 30), httr::add_headers(Accept = "application/json"))
+              r_next <- httr2::request(next_url) %>%
+                httr2::req_headers(Accept = "application/json") %>%
+                httr2::req_perform()
               
-              if (httr::status_code(r_next) == 200) {
+              if (httr2::resp_status(r_next) == 200) {
                 if (!is.null(cache_impl)) {
                   cache_impl[[next_url]] <- r_next
                 }
-              } else if (httr::status_code(r_next) == 404) {
+              } else if (httr2::resp_status(r_next) == 404) {
                 return(list())
               } else {
-                stop(paste("The request for", next_url, "failed: response code was", httr::status_code(r_next), 
-                          "content was\n", httr::content(r_next, as = "text")))
+                stop(paste("The request for", next_url, "failed: response code was", httr2::resp_status(r_next), 
+                          "content was\n", httr2::resp_body_string(r_next)))
               }
             }
             
             # 解析下一页数据
-            content_next <- httr::content(r_next, as = "text")
+            content_next <- httr2::resp_body_string(r_next)
             parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
             
             # 扩展结果列表
@@ -105,14 +115,11 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
             
             # 更新进度条
             progress <- length(results_list)
-            utils::setTxtProgressBar(utils::txtProgressBar(min = 0, max = total_elements, style = 3), progress)
+            pb$update(progress / total_elements)
             
             # 获取下一页链接
             next_link <- parsed_data_next[["_links"]][["next"]]
           }
-          
-          # 关闭进度条
-          close(utils::txtProgressBar(min = 0, max = total_elements, style = 3))
         }
       }
       
@@ -120,11 +127,11 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
     } else {
       return(list(parsed_data))
     }
-  } else if (httr::status_code(r) == 404) {
+  } else if (httr2::resp_status(r) == 404) {
     return(list())
   } else {
-    stop(paste("The request for", url, "failed: response code was", httr::status_code(r), 
-              "content was\n", httr::content(r, as = "text")))
+    stop(paste("The request for", url, "failed: response code was", httr2::resp_status(r), 
+              "content was\n", httr2::resp_body_string(r)))
   }
 }
 
@@ -137,7 +144,6 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
 #'
 #' @return A list of association objects retrieved from the API
 #'
-#' @export
 #'
 get_association <- function(url, cached = TRUE) {
   return(get_data(url, cache_impl = association_cache, cached = cached, type = "associations"))

@@ -15,8 +15,9 @@ License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
-    httr,
+    httr2,
     jsonlite,
+    progress,
     utils
 Suggests: 
     # 测试依赖放在 Suggests 中（非核心依赖）
