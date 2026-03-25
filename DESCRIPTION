@@ -18,7 +18,8 @@ Imports:
     httr2,
     jsonlite,
     progress,
-    utils
+    utils,
+    cachem
 Suggests: 
     # 测试依赖放在 Suggests 中（非核心依赖）
     testthat (>= 3.0.0) # 指定最低版本（推荐3.0+）
