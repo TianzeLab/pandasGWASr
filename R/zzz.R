@@ -12,15 +12,15 @@
   ttl <- 60 * 60 * 24
   
   # 创建包全局内存TTL缓存
-  .pandasGWASr$association_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$study_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$trait_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$snp_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$ancestry_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$publication_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$genomicContext_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$gene_cache <- cachem::cache_mem(ttl = ttl)
-  .pandasGWASr$locus_cache <- cachem::cache_mem(ttl = ttl)
+  .pandasGWASr$association_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$study_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$trait_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$snp_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$ancestry_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$publication_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$genomicContext_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$gene_cache <- cachem::cache_mem(max_age = ttl)
+  .pandasGWASr$locus_cache <- cachem::cache_mem(max_age = ttl)
 }
 
 # 定义清除缓存的函数

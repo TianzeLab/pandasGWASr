@@ -9,7 +9,7 @@ get_data(url, cache_impl = NULL, cached = TRUE, type = NULL)
 \arguments{
 \item{url}{The URL to request data from}
 
-\item{cache_impl}{A named list used for caching responses}
+\item{cache_impl}{A cachem cache object used for caching responses}
 
 \item{cached}{Logical value indicating whether to use cached responses}
 
