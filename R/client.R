@@ -41,8 +41,8 @@ get_data <- function(url,
     r <- cache_impl$get(clean_string(url))
   } else {
     # 发送HTTP请求
-    r <- httr2::request(url) %>%
-      httr2::req_headers(Accept = "application/json") %>%
+    r <- httr2::request(url) |>
+      httr2::req_headers(Accept = "application/json") |>
       httr2::req_perform() # nolint
   }
   # 处理响应
@@ -81,8 +81,8 @@ get_data <- function(url,
               r <- cache_impl$get(clean_string(next_url))
             } else {
               # 发送HTTP请求
-              r <- httr2::request(next_url) %>%
-                httr2::req_headers(Accept = "application/json") %>%
+              r <- httr2::request(next_url) |>
+                httr2::req_headers(Accept = "application/json") |>
                 httr2::req_perform()
               if (httr2::resp_status(r) == 200) {
                 # 解析下一页数据
