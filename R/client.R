@@ -1,13 +1,18 @@
 
+
+
+
 # 缓存变量（在zzz.R中定义）
 
 ask_yes_no_question <- function(question) {
   yes_no_answer <- ""
-  while (toupper(yes_no_answer) != "YES" && toupper(yes_no_answer) != "NO") {
+  while (toupper(yes_no_answer) != "YES" &&
+         toupper(yes_no_answer) != "NO") {
     yes_no_answer <- readline(question)
   }
   return(toupper(yes_no_answer))
 }
+
 
 #' Get data from GWAS API
 #'
@@ -21,125 +26,121 @@ ask_yes_no_question <- function(question) {
 #' @return A list of data objects retrieved from the API
 #'
 #' @importFrom httr2 request req_headers req_perform resp_status
-#' @importFrom httr2 resp_body_string 
+#' @importFrom httr2 resp_body_string
 #' @importFrom jsonlite fromJSON
 #' @importFrom progress progress_bar
 #'
 #' @noRd
 #'
-get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
+get_data <- function(url,
+                     cache_impl = NULL,
+                     cached = TRUE,
+                     type = NULL) {
   # 检查缓存
-  if (!is.null(cache_impl) && cached) {
-    cached_result <- cache_impl$get(url)
-    if (!is.null(cached_result)) {
-      return(cached_result)
-    }
+  if (cache_impl$exists(clean_string(url)) && cached) {
+    r <- cache_impl$get(clean_string(url))
+  } else {
+    # 发送HTTP请求
+    r <- httr2::request(url) %>%
+      httr2::req_headers(Accept = "application/json") %>%
+      httr2::req_perform() # nolint
   }
-  
-  # 发送HTTP请求
-  r <- httr2::request(url) %>%
-    httr2::req_headers(Accept = "application/json") %>%
-    httr2::req_perform()
-  
   # 处理响应
   if (httr2::resp_status(r) == 200) {
     content <- httr2::resp_body_string(r)
     if (nchar(content) == 0) {
-      result <- list()
-    } else {
-      # 解析JSON
-      parsed_data <- jsonlite::fromJSON(content, simplifyVector = FALSE)
-      
-      # 处理嵌入式数据
-      if (!is.null(parsed_data[["_embedded"]])) {
-        results_list <- parsed_data[["_embedded"]][[type]]
-        
-        # 处理分页
-        if (!is.null(parsed_data[["_links"]])) {
-          next_link <- parsed_data[["_links"]][["next"]]
-          if (!is.null(next_link)) {
-            # 显示进度条
-            total_elements <- parsed_data[["page"]][["totalElements"]]
-            progress <- length(results_list)
-            pb <- progress::progress_bar$new(
-              format = "  downloading [:bar] :percent eta: :eta",
-              total = total_elements,
-              clear = FALSE,
-              width = 60
-            )
-            pb$update(progress / total_elements)
-            
-            # 循环获取下一页
-            while (!is.null(next_link)) {
-              next_url <- next_link[["href"]]
-              
-              # 检查缓存
-              next_result <- NULL
-              if (!is.null(cache_impl) && cached) {
-                next_result <- cache_impl$get(next_url)
-              }
-              
-              if (!is.null(next_result)) {
-                # 使用缓存的结果
-                results_list <- c(results_list, next_result)
+      return(list())
+    }
+    cache_impl$set(clean_string(url), r)
+    # 解析JSON
+    parsed_data <- jsonlite::fromJSON(content, simplifyVector = FALSE)
+    # 处理嵌入式数据
+    if (!is.null(parsed_data[["_embedded"]])) {
+      results_list <- parsed_data[["_embedded"]][[type]]
+      # 处理分页
+      if (!is.null(parsed_data[["_links"]])) {
+        next_link <- parsed_data[["_links"]][["next"]]
+        if (!is.null(next_link)) {
+          # 显示进度条
+          total_elements <- parsed_data[["page"]][["totalElements"]]
+          progress <- length(results_list)
+          pb <- progress::progress_bar$new(
+            format = "  downloading [:bar] :percent eta: :eta",
+            total = total_elements,
+            clear = FALSE,
+            width = 60
+          )
+          pb$update(progress / total_elements)
+
+          # 循环获取下一页
+          while (!is.null(next_link)) {
+            next_url <- next_link[["href"]]
+
+            # 检查缓存
+            if (cache_impl$exists(clean_string(next_url)) && cached) {
+              r <- cache_impl$get(clean_string(next_url))
+            } else {
+              # 发送HTTP请求
+              r <- httr2::request(next_url) %>%
+                httr2::req_headers(Accept = "application/json") %>%
+                httr2::req_perform()
+              if (httr2::resp_status(r) == 200) {
+                # 解析下一页数据
+                content_next <- httr2::resp_body_string(r)
+                parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
+
+                # 扩展结果列表
+                page_results <- parsed_data_next[["_embedded"]][[type]]
+                results_list <- c(results_list, page_results)
+                # 缓存下一页结果
+                cache_impl$set(next_url, r)
+              } else if (httr2::resp_status(r) == 404) {
+                return(list())
               } else {
-                # 发送HTTP请求
-                r_next <- httr2::request(next_url) %>%
-                  httr2::req_headers(Accept = "application/json") %>%
-                  httr2::req_perform()
-                
-                if (httr2::resp_status(r_next) == 200) {
-                  # 解析下一页数据
-                  content_next <- httr2::resp_body_string(r_next)
-                  parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
-                  
-                  # 扩展结果列表
-                  page_results <- parsed_data_next[["_embedded"]][[type]]
-                  results_list <- c(results_list, page_results)
-                  
-                  # 缓存下一页结果
-                  if (!is.null(cache_impl)) {
-                    cache_impl$set(next_url, page_results)
-                  }
-                } else if (httr2::resp_status(r_next) == 404) {
-                  result <- list()
-                  break
-                } else {
-                  stop(paste("The request for", next_url, "failed: response code was", httr2::resp_status(r_next), 
-                            "content was\n", httr2::resp_body_string(r_next)))
-                }
+                stop(
+                  paste(
+                    "The request for",
+                    next_url,
+                    "failed: response code was",
+                    httr2::resp_status(r),
+                    "content was\n",
+                    httr2::resp_body_string(r)
+                  )
+                )
               }
-              
-              # 更新进度条
-              progress <- length(results_list)
-              pb$update(progress / total_elements)
-              
-              # 获取下一页链接
-              next_link <- parsed_data_next[["_links"]][["next"]]
+
             }
+
+            # 更新进度条
+            progress <- length(results_list)
+            pb$update(progress / total_elements)
+
+            # 获取下一页链接
+            next_link <- parsed_data_next[["_links"]][["next"]]
           }
         }
-        
-        result <- results_list
-      } else {
-        result <- list(parsed_data)
       }
+      return(results_list)
     }
-    
-    # 缓存响应
-    if (!is.null(cache_impl)) {
-      cache_impl$set(url, result)
+    else {
+      return(list(parsed_data))
     }
-    
-    return(result)
+
   } else if (httr2::resp_status(r) == 404) {
-    return(list())
+    retuern(list())
   } else {
-    stop(paste("The request for", url, "failed: response code was", httr2::resp_status(r), 
-              "content was\n", httr2::resp_body_string(r)))
+    stop(
+      paste(
+        "The request for",
+        url,
+        "failed: response code was",
+        httr2::resp_status(r),
+        "content was\n",
+        httr2::resp_body_string(r)
+      )
+    )
   }
 }
-
 #' Get association data
 #'
 #' This function retrieves association data from the GWAS API.
@@ -152,5 +153,33 @@ get_data <- function(url, cache_impl = NULL, cached = TRUE, type = NULL) {
 #' @export
 #'
 get_association <- function(url, cached = TRUE) {
-  return(get_data(url, cache_impl = .pandasGWASr$association_cache, cached = cached, type = "associations"))
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$association_cache,
+      cached = cached,
+      type = "associations"
+    )
+  )
+}
+
+#' 清理字符串：仅保留字母数字 + 转小写
+#'
+#' @param x 输入字符串（字符型）
+#' @return 清理后的字符串（仅字母数字，全小写）
+#' @noRd
+clean_string <- function(x) {
+  # 1. 检查输入
+  if (!is.character(x)) {
+    stop("输入必须是字符型字符串")
+  }
+  
+  # 2. 仅保留 字母 + 数字，移除所有其他符号
+  x_clean <- gsub("[^a-zA-Z0-9]", "", x)
+  
+  # 3. 大写转小写
+  x_clean <- tolower(x_clean)
+  
+  # 返回结果
+  return(x_clean)
 }
