@@ -26,7 +26,7 @@ ask_yes_no_question <- function(question) {
 #' @return A list of data objects retrieved from the API
 #'
 #' @importFrom httr2 request req_headers req_perform resp_status
-#' @importFrom httr2 resp_body_string
+#' @importFrom httr2 resp_body_string req_cookie_preserve
 #' @importFrom jsonlite fromJSON
 #' @importFrom progress progress_bar
 #'
@@ -36,12 +36,13 @@ get_data <- function(url,
                      cache_impl = NULL,
                      cached = TRUE,
                      type = NULL) {
+  cookie_path <- tempfile()
   # 检查缓存
   if (cache_impl$exists(clean_string(url)) && cached) {
     r <- cache_impl$get(clean_string(url))
   } else {
     # 发送HTTP请求
-    r <- httr2::request(url) |>
+    r <- httr2::request(url) |> req_cookie_preserve(cookie_path) |>
       httr2::req_headers(Accept = "application/json") |>
       httr2::req_perform() # nolint
   }
@@ -65,7 +66,7 @@ get_data <- function(url,
           total_elements <- parsed_data[["page"]][["totalElements"]]
           progress <- length(results_list)
           pb <- progress::progress_bar$new(
-            format = "  downloading [:bar] :percent eta: :eta",
+            format = "  downloading [:bar] :current/:total eta: :eta",
             total = total_elements,
             clear = FALSE,
             width = 60
@@ -81,36 +82,33 @@ get_data <- function(url,
               r <- cache_impl$get(clean_string(next_url))
             } else {
               # 发送HTTP请求
-              r <- httr2::request(next_url) |>
+              r <- httr2::request(next_url) |> req_cookie_preserve(cookie_path) |>
                 httr2::req_headers(Accept = "application/json") |>
                 httr2::req_perform()
-              if (httr2::resp_status(r) == 200) {
-                # 解析下一页数据
-                content_next <- httr2::resp_body_string(r)
-                parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
-
-                # 扩展结果列表
-                page_results <- parsed_data_next[["_embedded"]][[type]]
-                results_list <- c(results_list, page_results)
-                # 缓存下一页结果
-                cache_impl$set(next_url, r)
-              } else if (httr2::resp_status(r) == 404) {
-                return(list())
-              } else {
-                stop(
-                  paste(
-                    "The request for",
-                    next_url,
-                    "failed: response code was",
-                    httr2::resp_status(r),
-                    "content was\n",
-                    httr2::resp_body_string(r)
-                  )
-                )
-              }
-
             }
-
+            if (httr2::resp_status(r) == 200) {
+              # 解析下一页数据
+              content_next <- httr2::resp_body_string(r)
+              parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
+              # 扩展结果列表
+              page_results <- parsed_data_next[["_embedded"]][[type]]
+              results_list <- c(results_list, page_results)
+              # 缓存下一页结果
+              cache_impl$set(clean_string(next_url), r)
+            } else if (httr2::resp_status(r) == 404) {
+              return(list())
+            } else {
+              stop(
+                paste(
+                  "The request for",
+                  next_url,
+                  "failed: response code was",
+                  httr2::resp_status(r),
+                  "content was\n",
+                  httr2::resp_body_string(r)
+                )
+              )
+            }
             # 更新进度条
             progress <- length(results_list)
             pb$update(progress / total_elements)
@@ -127,7 +125,7 @@ get_data <- function(url,
     }
 
   } else if (httr2::resp_status(r) == 404) {
-    retuern(list())
+    return(list())
   } else {
     stop(
       paste(

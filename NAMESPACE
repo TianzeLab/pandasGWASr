@@ -2,6 +2,7 @@
 
 export(get_association)
 importFrom(cachem,cache_mem)
+importFrom(httr2,req_cookie_preserve)
 importFrom(httr2,req_headers)
 importFrom(httr2,req_perform)
 importFrom(httr2,request)
