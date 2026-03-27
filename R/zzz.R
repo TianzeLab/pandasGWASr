@@ -27,7 +27,7 @@
 #'
 #' @param cache_name The name of the cache to clear, or "all" to clear all caches
 #'
-#' @noRd
+#' @export
 clear_cache <- function(cache_name = "all") {
   if (cache_name == "all") {
     # 清除所有缓存

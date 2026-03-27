@@ -29,6 +29,7 @@ ask_yes_no_question <- function(question) {
 #' @importFrom httr2 resp_body_string req_cookie_preserve
 #' @importFrom jsonlite fromJSON
 #' @importFrom progress progress_bar
+#' @importFrom cachem cache_mem
 #'
 #' @noRd
 #'
@@ -159,6 +160,231 @@ get_association <- function(url, cached = TRUE) {
       type = "associations"
     )
   )
+}
+
+#' Get study data
+#'
+#' This function retrieves study data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of study objects retrieved from the API
+#'
+#' @export
+#'
+get_study <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$study_cache,
+      cached = cached,
+      type = "studies"
+    )
+  )
+}
+
+#' Get trait data
+#'
+#' This function retrieves trait data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of trait objects retrieved from the API
+#'
+#' @export
+#'
+get_trait <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$trait_cache,
+      cached = cached,
+      type = "efo_traits"
+    )
+  )
+}
+
+#' Get SNP data
+#'
+#' This function retrieves SNP data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of SNP objects retrieved from the API
+#'
+#' @export
+#'
+get_snp <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$snp_cache,
+      cached = cached,
+      type = "snps"
+    )
+  )
+}
+
+#' Get ancestry data
+#'
+#' This function retrieves ancestry data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of ancestry objects retrieved from the API
+#'
+#' @export
+#'
+get_ancestry <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$ancestry_cache,
+      cached = cached,
+      type = "ancestries"
+    )
+  )
+}
+
+#' Get publication data
+#'
+#' This function retrieves publication data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of publication objects retrieved from the API
+#'
+#' @export
+#'
+get_publication <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$publication_cache,
+      cached = cached,
+      type = "publications"
+    )
+  )
+}
+
+#' Get genomic context data
+#'
+#' This function retrieves genomic context data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of genomic context objects retrieved from the API
+#'
+#' @export
+#'
+get_genomicContext <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$genomicContext_cache,
+      cached = cached,
+      type = "genomic_contexts"
+    )
+  )
+}
+
+#' Get gene data
+#'
+#' This function retrieves gene data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of gene objects retrieved from the API
+#'
+#' @export
+#'
+get_gene <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$gene_cache,
+      cached = cached,
+      type = "genes"
+    )
+  )
+}
+
+#' Get locus data
+#'
+#' This function retrieves locus data from the GWAS API.
+#'
+#' @param url The URL to request data from
+#' @param cached Logical value indicating whether to use cached responses
+#'
+#' @return A list of locus objects retrieved from the API
+#'
+#' @export
+#'
+get_locus <- function(url, cached = TRUE) {
+  return(
+    get_data(
+      url,
+      cache_impl = .pandasGWASr$locus_cache,
+      cached = cached,
+      type = "loci"
+    )
+  )
+}
+
+#' Reinitialize cache
+#'
+#' This function reinitializes the cache for the specified data type or all caches.
+#'
+#' @param field The field to reinitialize the cache for, or "All" for all caches
+#' @param maxsize The maximum size of the cache
+#' @param ttl The time to live for the cache in seconds
+#'
+#' @export
+#'
+reinit_cache <- function(field = "All", maxsize = 2 * 1024, ttl = 60 * 60 * 24) {
+  fields <- c("Association", "Study", "Trait", "Snp", "Ancestry", "Publication", "GenomicContext", "Gene", "Locus")
+  fields_and_all <- c("All", "Association", "Study", "Trait", "Snp", "Ancestry", "Publication", "GenomicContext", "Gene", "Locus")
+  
+  if (!field %in% fields_and_all) {
+    stop(paste("The field must be one of", paste(fields_and_all, collapse = ", ")))
+  }
+  
+  if (field == "Association") {
+    .pandasGWASr$association_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Study") {
+    .pandasGWASr$study_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Trait") {
+    .pandasGWASr$trait_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Snp") {
+    .pandasGWASr$snp_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Ancestry") {
+    .pandasGWASr$ancestry_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Publication") {
+    .pandasGWASr$publication_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "GenomicContext") {
+    .pandasGWASr$genomicContext_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Gene") {
+    .pandasGWASr$gene_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else if (field == "Locus") {
+    .pandasGWASr$locus_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  } else { # All
+    .pandasGWASr$association_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$study_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$trait_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$snp_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$ancestry_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$publication_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$genomicContext_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$gene_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+    .pandasGWASr$locus_cache <- cache_mem(max_age = ttl, max_size = maxsize)
+  }
 }
 
 #' 清理字符串：仅保留字母数字 + 转小写
