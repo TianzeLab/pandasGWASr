@@ -119,9 +119,13 @@ get_data <- function(url,
           }
         }
       }
+      for (result in results_list) {
+        result[["_links"]] <- NULL
+      }
       return(results_list)
     }
     else {
+      parsed_data[["_links"]] <- NULL
       return(list(parsed_data))
     }
 
