@@ -10,11 +10,11 @@ test_that("get_association returns data for valid URL", {
   
   # Test with caching enabled
   result_with_cache <- get_association(url, cached = TRUE)
-  expect_is(result_with_cache, "list")
+  expect_type(result_with_cache, "list")
   
   # Test with caching disabled
   result_without_cache <- get_association(url, cached = FALSE)
-  expect_is(result_without_cache, "list")
+  expect_type(result_without_cache, "list")
 })
 
 # Test 2: Test get_association function with a non-existent URL
@@ -23,7 +23,7 @@ test_that("get_association returns empty list for 404 URL", {
   url <- "https://www.ebi.ac.uk/gwas/api/v2/associations/non_existent_id"
   
   result <- get_association(url)
-  expect_is(result, "list")
+  expect_type(result, "list")
   expect_length(result, 0)
 })
 

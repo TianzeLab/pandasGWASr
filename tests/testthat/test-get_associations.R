@@ -7,7 +7,7 @@ test_that("get_associations returns data for association_id", {
   skip_if_offline()
 
   assoc <- get_associations(association_id = "169106883", mode = "Thin")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_equal(length(assoc), 1)
   expect_equal(nrow(assoc@associations), 1)
 })
@@ -17,7 +17,7 @@ test_that("get_associations returns data for association_id in Fat mode", {
   skip_if_offline()
 
   assoc <- get_associations(association_id = "169106883")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_equal(length(assoc), 1)
   expect_equal(nrow(assoc@associations), 1)
 })
@@ -27,7 +27,7 @@ test_that("get_associations returns data for pubmed_id", {
   skip_if_offline()
 
   assoc <- get_associations(pubmed_id = "35241825")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -36,7 +36,7 @@ test_that("get_associations returns data for rs_id", {
   skip_if_offline()
 
   assoc <- get_associations(rs_id = "rs3093017")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -45,7 +45,7 @@ test_that("get_associations returns data for accession_id", {
   skip_if_offline()
 
   assoc <- get_associations(accession_id = "GCST000854")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -54,7 +54,7 @@ test_that("get_associations returns data for efo_trait", {
   skip_if_offline()
 
   assoc <- get_associations(efo_trait = "celiac disease")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -63,7 +63,7 @@ test_that("get_associations returns data for efo_id", {
   skip_if_offline()
 
   assoc <- get_associations(efo_id = "EFO_0001060")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -72,7 +72,7 @@ test_that("get_associations returns data for mapped_gene", {
   skip_if_offline()
 
   assoc <- get_associations(mapped_gene = "CCR6,HBS1L")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -81,7 +81,7 @@ test_that("get_associations handles full_pvalue_set parameter", {
   skip_if_offline()
 
   assoc <- get_associations(accession_id = "GCST000854", full_pvalue_set = TRUE)
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 0)
 })
 
@@ -90,7 +90,7 @@ test_that("get_associations handles show_child_trait parameter", {
   skip_if_offline()
 
   assoc <- get_associations(efo_id = "EFO_0001060", show_child_trait = TRUE)
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -99,7 +99,7 @@ test_that("get_associations handles extended_geneset parameter", {
   skip_if_offline()
 
   assoc <- get_associations(mapped_gene = "CCR6,HBS1L", extended_geneset = TRUE)
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_true(length(assoc) >= 1)
 })
 
@@ -202,8 +202,8 @@ test_that("get_associations handles cached parameter", {
   assoc_cached <- get_associations(association_id = "169106883", cached = TRUE)
   assoc_not_cached <- get_associations(association_id = "169106883", cached = FALSE)
 
-  expect_is(assoc_cached, "Association")
-  expect_is(assoc_not_cached, "Association")
+  expect_s4_class(assoc_cached, "Association")
+  expect_s4_class(assoc_not_cached, "Association")
   expect_equal(length(assoc_cached), length(assoc_not_cached))
 })
 
@@ -212,7 +212,7 @@ test_that("get_associations handles Thin mode", {
   skip_if_offline()
 
   assoc <- get_associations(association_id = "169106883", mode = "Thin")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_equal(assoc@mode, "Thin")
 })
 
@@ -221,6 +221,6 @@ test_that("get_associations handles Fat mode", {
   skip_if_offline()
 
   assoc <- get_associations(association_id = "169106883", mode = "Fat")
-  expect_is(assoc, "Association")
+  expect_s4_class(assoc, "Association")
   expect_equal(assoc@mode, "Fat")
 })
