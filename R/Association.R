@@ -369,7 +369,7 @@ setMethod(
     if (object@mode == 'Fat') {
       cat(
         "Association is running in fat mode. It has 8 DataFrames with hierarchical dependencies.\n",
-        "associations: ", nrow(object@associations), " rows\n",
+        "associations: ", nrow(object), " rows\n",
         "|\n -efo_traits: ", nrow(object@efo_traits), " rows\n",
         "|\n -snp_allele: ", nrow(object@snp_allele), " rows\n",
         "|\n -bg_efo_traits: ", nrow(object@bg_efo_traits), " rows\n",
@@ -404,6 +404,15 @@ setMethod(
   signature = "Association",
   function(x) {
     return(c(nrow(x@associations), length(x@raw_data)))
+  }
+)
+
+#' @export
+setMethod(
+  "nrow",
+  signature = "Association",
+  function(x) {
+    return(nrow(x@associations))
   }
 )
 
@@ -648,6 +657,7 @@ setMethod(
     cat("==========================\n")
     cat("Mode:", object@mode, "\n")
     cat("Number of raw records:", length(object@raw_data), "\n")
+    cat("Number of associations:", nrow(object), "\n")
     if (object@mode == "Fat") {
       cat("\nDataFrames:\n")
       cat("  associations:", nrow(object@associations), "rows\n")
