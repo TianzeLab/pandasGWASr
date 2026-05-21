@@ -318,13 +318,16 @@ Association <- function(data = NULL, mode = "Fat") {
     }
 
     if (length(association_rows) > 0) {
-      obj@associations <- do.call(rbind, lapply(association_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in ASSOCIATION_COLUMNS) {
-        if (!col %in% colnames(obj@associations)) {
-          obj@associations[[col]] <- NA
+      for (i in seq_along(association_rows)) {
+        row <- association_rows[[i]]
+        for (col in ASSOCIATION_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        association_rows[[i]] <- row[ASSOCIATION_COLUMNS]
       }
-      obj@associations <- obj@associations[, ASSOCIATION_COLUMNS, drop = FALSE]
+      obj@associations <- do.call(rbind, lapply(association_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(efo_traits_rows) > 0) {
@@ -333,68 +336,87 @@ Association <- function(data = NULL, mode = "Fat") {
         if (!col %in% colnames(obj@efo_traits)) {
           obj@efo_traits[[col]] <- NA
         }
+        efo_traits_rows[[i]] <- row[EFO_TRAITS_COLUMNS]
       }
-      obj@efo_traits <- obj@efo_traits[, EFO_TRAITS_COLUMNS, drop = FALSE]
+      obj@efo_traits <- do.call(rbind, lapply(efo_traits_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(snp_allele_rows) > 0) {
-      obj@snp_allele <- do.call(rbind, lapply(snp_allele_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in SNP_ALLELE_COLUMNS) {
-        if (!col %in% colnames(obj@snp_allele)) {
-          obj@snp_allele[[col]] <- NA
+      for (i in seq_along(snp_allele_rows)) {
+        row <- snp_allele_rows[[i]]
+        for (col in SNP_ALLELE_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        snp_allele_rows[[i]] <- row[SNP_ALLELE_COLUMNS]
       }
-      obj@snp_allele <- obj@snp_allele[, SNP_ALLELE_COLUMNS, drop = FALSE]
+      obj@snp_allele <- do.call(rbind, lapply(snp_allele_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(bg_efo_traits_rows) > 0) {
-      obj@bg_efo_traits <- do.call(rbind, lapply(bg_efo_traits_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in BG_EFO_TRAITS_COLUMNS) {
-        if (!col %in% colnames(obj@bg_efo_traits)) {
-          obj@bg_efo_traits[[col]] <- NA
+      for (i in seq_along(bg_efo_traits_rows)) {
+        row <- bg_efo_traits_rows[[i]]
+        for (col in BG_EFO_TRAITS_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        bg_efo_traits_rows[[i]] <- row[BG_EFO_TRAITS_COLUMNS]
       }
-      obj@bg_efo_traits <- obj@bg_efo_traits[, BG_EFO_TRAITS_COLUMNS, drop = FALSE]
+      obj@bg_efo_traits <- do.call(rbind, lapply(bg_efo_traits_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(reported_traits_rows) > 0) {
-      obj@reported_traits <- do.call(rbind, lapply(reported_traits_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in REPORTED_TRAITS_COLUMNS) {
-        if (!col %in% colnames(obj@reported_traits)) {
-          obj@reported_traits[[col]] <- NA
+      for (i in seq_along(reported_traits_rows)) {
+        row <- reported_traits_rows[[i]]
+        for (col in REPORTED_TRAITS_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        reported_traits_rows[[i]] <- row[REPORTED_TRAITS_COLUMNS]
       }
-      obj@reported_traits <- obj@reported_traits[, REPORTED_TRAITS_COLUMNS, drop = FALSE]
+      obj@reported_traits <- do.call(rbind, lapply(reported_traits_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(locations_rows) > 0) {
-      obj@locations <- do.call(rbind, lapply(locations_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in LOCATIONS_COLUMNS) {
-        if (!col %in% colnames(obj@locations)) {
-          obj@locations[[col]] <- NA
+      for (i in seq_along(locations_rows)) {
+        row <- locations_rows[[i]]
+        for (col in LOCATIONS_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        locations_rows[[i]] <- row[LOCATIONS_COLUMNS]
       }
-      obj@locations <- obj@locations[, LOCATIONS_COLUMNS, drop = FALSE]
+      obj@locations <- do.call(rbind, lapply(locations_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(mapped_genes_rows) > 0) {
-      obj@mapped_genes <- do.call(rbind, lapply(mapped_genes_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in MAPPED_GENES_COLUMNS) {
-        if (!col %in% colnames(obj@mapped_genes)) {
-          obj@mapped_genes[[col]] <- NA
+      for (i in seq_along(mapped_genes_rows)) {
+        row <- mapped_genes_rows[[i]]
+        for (col in MAPPED_GENES_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        mapped_genes_rows[[i]] <- row[MAPPED_GENES_COLUMNS]
       }
-      obj@mapped_genes <- obj@mapped_genes[, MAPPED_GENES_COLUMNS, drop = FALSE]
+      obj@mapped_genes <- do.call(rbind, lapply(mapped_genes_rows, data.frame, stringsAsFactors = FALSE))
     }
 
     if (length(snp_effect_alleles_rows) > 0) {
-      obj@snp_effect_alleles <- do.call(rbind, lapply(snp_effect_alleles_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in SNP_EFFECT_ALLELES_COLUMNS) {
-        if (!col %in% colnames(obj@snp_effect_alleles)) {
-          obj@snp_effect_alleles[[col]] <- NA
+      for (i in seq_along(snp_effect_alleles_rows)) {
+        row <- snp_effect_alleles_rows[[i]]
+        for (col in SNP_EFFECT_ALLELES_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
+        snp_effect_alleles_rows[[i]] <- row[SNP_EFFECT_ALLELES_COLUMNS]
       }
-      obj@snp_effect_alleles <- obj@snp_effect_alleles[, SNP_EFFECT_ALLELES_COLUMNS, drop = FALSE]
+      obj@snp_effect_alleles <- do.call(rbind, lapply(snp_effect_alleles_rows, data.frame, stringsAsFactors = FALSE))
     }
   }
 
@@ -512,7 +534,11 @@ setMethod(
           sub_set <- c(sub_set, list(raw_data_dict[[i_val]]))
         }
       } else if (is.numeric(i_val)) {
-        if (i_val >= 1 && i_val <= length(raw_data)) {
+        if (i_val == 0) {
+          if (length(raw_data) >= 1) {
+            sub_set <- c(sub_set, list(raw_data[[1]]))
+          }
+        } else if (i_val >= 1 && i_val <= length(raw_data)) {
           sub_set <- c(sub_set, list(raw_data[[i_val]]))
         }
       } else {
