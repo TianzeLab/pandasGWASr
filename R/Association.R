@@ -331,10 +331,12 @@ Association <- function(data = NULL, mode = "Fat") {
     }
 
     if (length(efo_traits_rows) > 0) {
-      obj@efo_traits <- do.call(rbind, lapply(efo_traits_rows, data.frame, stringsAsFactors = FALSE))
-      for (col in EFO_TRAITS_COLUMNS) {
-        if (!col %in% colnames(obj@efo_traits)) {
-          obj@efo_traits[[col]] <- NA
+      for (i in seq_along(efo_traits_rows)) {
+        row <- efo_traits_rows[[i]]
+        for (col in EFO_TRAITS_COLUMNS) {
+          if (!col %in% names(row)) {
+            row[[col]] <- NA
+          }
         }
         efo_traits_rows[[i]] <- row[EFO_TRAITS_COLUMNS]
       }
@@ -534,11 +536,7 @@ setMethod(
           sub_set <- c(sub_set, list(raw_data_dict[[i_val]]))
         }
       } else if (is.numeric(i_val)) {
-        if (i_val == 0) {
-          if (length(raw_data) >= 1) {
-            sub_set <- c(sub_set, list(raw_data[[1]]))
-          }
-        } else if (i_val >= 1 && i_val <= length(raw_data)) {
+        if (i_val >= 1 && i_val <= length(raw_data)) {
           sub_set <- c(sub_set, list(raw_data[[i_val]]))
         }
       } else {

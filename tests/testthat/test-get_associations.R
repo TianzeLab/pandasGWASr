@@ -110,7 +110,7 @@ test_that("get_associations supports numeric indexing", {
   assoc_a <- get_associations(association_id = "169106883")
   assoc_b <- get_associations(accession_id = "GCST000854")
 
-  expect_equal(assoc_a[0], assoc_a)
+  expect_equal(assoc_a[1], assoc_a)
 })
 
 # Test 13: Test get_associations indexing by character
@@ -127,7 +127,7 @@ test_that("get_associations supports range indexing", {
   skip_if_offline()
 
   assoc_b <- get_associations(accession_id = "GCST000854")
-  expect_equal(length(assoc_b[0:2]), 2)
+  expect_equal(length(assoc_b[1:2]), 2)
 })
 
 # Test 15: Test get_associations list indexing
@@ -135,7 +135,7 @@ test_that("get_associations supports list indexing", {
   skip_if_offline()
 
   assoc_b <- get_associations(accession_id = "GCST000854")
-  expect_equal(length(assoc_b[seq(0, 1)]), 2)
+  expect_equal(length(assoc_b[seq(1, 2)]), 2)
 })
 
 # Test 16: Test get_associations addition
@@ -145,7 +145,7 @@ test_that("get_associations supports addition operation", {
   assoc_a <- get_associations(association_id = "169106883")
   assoc_b <- get_associations(accession_id = "GCST000854")
 
-  combined <- assoc_a + assoc_b[0]
+  combined <- assoc_a + assoc_b[1]
   expect_true(length(combined) >= 1)
 })
 
@@ -154,7 +154,7 @@ test_that("get_associations supports subtraction operation", {
   skip_if_offline()
 
   assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b - assoc_b[0]
+  result <- assoc_b - assoc_b[1]
   expect_equal(length(result), length(assoc_b) - 1)
 })
 
@@ -163,7 +163,7 @@ test_that("get_associations supports intersection operation", {
   skip_if_offline()
 
   assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b & assoc_b[0]
+  result <- assoc_b & assoc_b[1]
   expect_equal(length(result), 1)
 })
 
@@ -172,7 +172,7 @@ test_that("get_associations supports union operation", {
   skip_if_offline()
 
   assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b | assoc_b[0]
+  result <- assoc_b | assoc_b[1]
   expect_equal(length(result), length(assoc_b))
 })
 
@@ -181,7 +181,7 @@ test_that("get_associations supports XOR operation", {
   skip_if_offline()
 
   assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b ^ assoc_b[0]
+  result <- assoc_b ^ assoc_b[1]
   expect_equal(length(result), length(assoc_b) - 1)
 })
 
