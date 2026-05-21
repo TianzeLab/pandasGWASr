@@ -319,41 +319,81 @@ Association <- function(data = NULL, mode = "Fat") {
 
     if (length(association_rows) > 0) {
       obj@associations <- do.call(rbind, lapply(association_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in ASSOCIATION_COLUMNS) {
+        if (!col %in% colnames(obj@associations)) {
+          obj@associations[[col]] <- NA
+        }
+      }
       obj@associations <- obj@associations[, ASSOCIATION_COLUMNS, drop = FALSE]
     }
 
     if (length(efo_traits_rows) > 0) {
       obj@efo_traits <- do.call(rbind, lapply(efo_traits_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in EFO_TRAITS_COLUMNS) {
+        if (!col %in% colnames(obj@efo_traits)) {
+          obj@efo_traits[[col]] <- NA
+        }
+      }
       obj@efo_traits <- obj@efo_traits[, EFO_TRAITS_COLUMNS, drop = FALSE]
     }
 
     if (length(snp_allele_rows) > 0) {
       obj@snp_allele <- do.call(rbind, lapply(snp_allele_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in SNP_ALLELE_COLUMNS) {
+        if (!col %in% colnames(obj@snp_allele)) {
+          obj@snp_allele[[col]] <- NA
+        }
+      }
       obj@snp_allele <- obj@snp_allele[, SNP_ALLELE_COLUMNS, drop = FALSE]
     }
 
     if (length(bg_efo_traits_rows) > 0) {
       obj@bg_efo_traits <- do.call(rbind, lapply(bg_efo_traits_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in BG_EFO_TRAITS_COLUMNS) {
+        if (!col %in% colnames(obj@bg_efo_traits)) {
+          obj@bg_efo_traits[[col]] <- NA
+        }
+      }
       obj@bg_efo_traits <- obj@bg_efo_traits[, BG_EFO_TRAITS_COLUMNS, drop = FALSE]
     }
 
     if (length(reported_traits_rows) > 0) {
       obj@reported_traits <- do.call(rbind, lapply(reported_traits_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in REPORTED_TRAITS_COLUMNS) {
+        if (!col %in% colnames(obj@reported_traits)) {
+          obj@reported_traits[[col]] <- NA
+        }
+      }
       obj@reported_traits <- obj@reported_traits[, REPORTED_TRAITS_COLUMNS, drop = FALSE]
     }
 
     if (length(locations_rows) > 0) {
       obj@locations <- do.call(rbind, lapply(locations_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in LOCATIONS_COLUMNS) {
+        if (!col %in% colnames(obj@locations)) {
+          obj@locations[[col]] <- NA
+        }
+      }
       obj@locations <- obj@locations[, LOCATIONS_COLUMNS, drop = FALSE]
     }
 
     if (length(mapped_genes_rows) > 0) {
       obj@mapped_genes <- do.call(rbind, lapply(mapped_genes_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in MAPPED_GENES_COLUMNS) {
+        if (!col %in% colnames(obj@mapped_genes)) {
+          obj@mapped_genes[[col]] <- NA
+        }
+      }
       obj@mapped_genes <- obj@mapped_genes[, MAPPED_GENES_COLUMNS, drop = FALSE]
     }
 
     if (length(snp_effect_alleles_rows) > 0) {
       obj@snp_effect_alleles <- do.call(rbind, lapply(snp_effect_alleles_rows, data.frame, stringsAsFactors = FALSE))
+      for (col in SNP_EFFECT_ALLELES_COLUMNS) {
+        if (!col %in% colnames(obj@snp_effect_alleles)) {
+          obj@snp_effect_alleles[[col]] <- NA
+        }
+      }
       obj@snp_effect_alleles <- obj@snp_effect_alleles[, SNP_EFFECT_ALLELES_COLUMNS, drop = FALSE]
     }
   }
