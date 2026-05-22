@@ -81,7 +81,10 @@ get_associations <- function(
 
   if (!has_id || has_query_filters) {
     if (has_query_filters) {
-      query_string <- paste(names(params), params, sep = "=", collapse = "&")
+      encoded_params <- lapply(params, function(value) {
+        URLencode(as.character(value), reserved = TRUE)
+      })
+      query_string <- paste(names(encoded_params), encoded_params, sep = "=", collapse = "&")
       query_url <- paste0(BASE_URL, "?", query_string)
     } else {
       query_url <- BASE_URL
