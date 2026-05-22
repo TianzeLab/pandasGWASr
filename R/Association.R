@@ -464,15 +464,6 @@ setMethod(
 
 #' @export
 setMethod(
-  "dim",
-  signature = "Association",
-  function(x) {
-    return(c(nrow(x@associations), length(x@raw_data)))
-  }
-)
-
-#' @export
-setMethod(
   "names",
   signature = "Association",
   function(x) {

@@ -219,19 +219,7 @@ test_that("summary method displays correct information", {
   expect_output(summary(assoc), "Association Object Summary")
 })
 
-# Test 23: Test dim method
-test_that("dim method returns correct dimensions", {
-  data <- list(
-    list(association_id = "12345"),
-    list(association_id = "67890")
-  )
-  assoc <- Association(data, "Fat")
-  dims <- dim(assoc)
-  expect_equal(dims[1], 2)
-  expect_equal(dims[2], 2)
-})
-
-# Test 24: Test names method
+# Test 23: Test names method
 test_that("names method returns slot names", {
   data <- list(list(association_id = "12345"))
   assoc <- Association(data, "Fat")

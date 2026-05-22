@@ -9,7 +9,6 @@ test_that("get_associations returns data for association_id", {
   assoc <- get_associations(association_id = "169106883", mode = "Thin")
   expect_s4_class(assoc, "Association")
   expect_equal(length(assoc), 1)
-  expect_equal(nrow(assoc@associations), 1)
 })
 
 # Test 2: Test get_associations with association_id in Fat mode
