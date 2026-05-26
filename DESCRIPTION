@@ -21,7 +21,6 @@ Imports:
     utils,
     cachem
 Suggests: 
-    # 测试依赖放在 Suggests 中（非核心依赖）
-    testthat (>= 3.0.0) # 指定最低版本（推荐3.0+）
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3
 RoxygenNote: 7.3.3
