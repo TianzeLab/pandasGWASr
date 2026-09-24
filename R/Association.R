@@ -1,8 +1,19 @@
-# Association class implementation using S4
-
 #' Association class
 #'
-#' This class represents association data from the GWAS API.
+#' An S4 class that stores data of type Association fetched from the GWAS API.
+#' In Fat mode it holds 8 data.frames with hierarchical dependencies; in Thin
+#' mode it only stores the raw list data.
+#'
+#' @slot raw_data list. Converted from obtained JSON data
+#' @slot mode character. Fat or Thin
+#' @slot associations data.frame
+#' @slot efo_traits data.frame
+#' @slot snp_allele data.frame
+#' @slot bg_efo_traits data.frame
+#' @slot reported_traits data.frame
+#' @slot locations data.frame
+#' @slot mapped_genes data.frame
+#' @slot snp_effect_alleles data.frame
 #'
 #' @export
 #'
@@ -24,27 +35,41 @@ setClass(
 
 #' Association constructor
 #'
-#' This function creates an Association object.
+#' Creates an Association object from a list of raw records. To understand the
+#' significance of each column of the data.frames, visit "Association" in the
+#' GWAS Catalog documentation
+#' (https://www.ebi.ac.uk/gwas/rest/api/v2/docs/reference).
 #'
-#' @param data A list of association data
-#' @param mode The mode of the association ("Fat" or "Thin")
+#' @param data A list of association records
+#' @param mode The mode of the object: "Fat" or "Thin"
 #'
 #' @return An Association object
+#'
+#' @examples
+#' \dontrun{
+#' ch <- Association(
+#'   list(list(association_id = "169106883", pvalue_mantissa = 5)),
+#'   mode = "Fat"
+#' )
+#' }
 #'
 #' @export
 #'
 Association <- function(data = NULL, mode = "Fat") {
   if (!mode %in% c("Fat", "Thin")) {
-    stop("Mode must be 'Fat' or 'Thin'")
+    stop("Mode must be Fat or Thin")
   }
 
   if (is.null(data)) {
-    data <- list()
-  }
-
-  normalized_data <- list()
-  for (item in data) {
-    if (is.list(item)) {
+    normalized_data <- list()
+  } else {
+    normalized_data <- list()
+    for (item in data) {
+      # JSON objects parse to named lists; arrays parse to unnamed lists
+      if (!is.list(item) ||
+          (length(item) > 0 && is.null(names(item)))) {
+        next
+      }
       rec <- item
       if (!is.null(rec$association_id)) {
         rec$association_id <- as.character(rec$association_id)
@@ -54,51 +79,50 @@ Association <- function(data = NULL, mode = "Fat") {
   }
 
   ASSOCIATION_COLUMNS <- c(
-    'association_id',
-    'risk_frequency',
-    'pvalue_description',
-    'pvalue_mantissa',
-    'pvalue_exponent',
-    'multi_snp_haplotype',
-    'snp_interaction',
-    'snp_type',
-    'range',
-    'description',
-    'or_per_copy_num',
-    'or_value',
-    'beta_num',
-    'beta_unit',
-    'beta_direction',
-    'beta',
-    'last_mapping_date',
-    'last_update_date',
-    'p_value',
-    'pubmed_id',
-    'first_author',
-    'ci_lower',
-    'ci_upper'
+    "association_id",
+    "risk_frequency",
+    "pvalue_description",
+    "pvalue_mantissa",
+    "pvalue_exponent",
+    "multi_snp_haplotype",
+    "snp_interaction",
+    "snp_type",
+    "range",
+    "description",
+    "or_per_copy_num",
+    "or_value",
+    "beta_num",
+    "beta_unit",
+    "beta_direction",
+    "beta",
+    "last_mapping_date",
+    "last_update_date",
+    "p_value",
+    "pubmed_id",
+    "first_author",
+    "ci_lower",
+    "ci_upper"
   )
 
-  EFO_TRAITS_COLUMNS <- c('association_id', 'efo_id', 'efo_trait')
-  SNP_ALLELE_COLUMNS <- c('association_id', 'rs_id', 'effect_allele')
-  BG_EFO_TRAITS_COLUMNS <- c('association_id', 'efo_id', 'efo_trait')
-  REPORTED_TRAITS_COLUMNS <- c('association_id', 'reported_trait')
-  LOCATIONS_COLUMNS <- c('association_id', 'location')
-  MAPPED_GENES_COLUMNS <- c('association_id', 'mapped_gene')
-  SNP_EFFECT_ALLELES_COLUMNS <- c('association_id', 'snp_effect_allele')
+  EFO_TRAITS_COLUMNS <- c("association_id", "efo_id", "efo_trait")
+  SNP_ALLELE_COLUMNS <- c("association_id", "rs_id", "effect_allele")
+  BG_EFO_TRAITS_COLUMNS <- c("association_id", "efo_id", "efo_trait")
+  REPORTED_TRAITS_COLUMNS <- c("association_id", "reported_trait")
+  LOCATIONS_COLUMNS <- c("association_id", "locations")
+  MAPPED_GENES_COLUMNS <- c("association_id", "mapped_genes")
+  SNP_EFFECT_ALLELES_COLUMNS <- c("association_id", "snp_effect_allele")
 
   NESTED_FIELDS <- c(
-    'efo_traits',
-    'snp_alleles',
-    'bg_efo_traits',
-    'reported_traits',
-    'locations',
-    'mapped_genes',
-    'snp_effect_alleles'
+    "efo_traits",
+    "snp_allele",
+    "bg_efo_traits",
+    "reported_trait",
+    "locations",
+    "mapped_genes",
+    "snp_effect_allele"
   )
 
   obj <- new("Association")
-  obj@raw_data <- normalized_data
   obj@mode <- mode
 
   obj@associations <- data.frame(matrix(ncol = length(ASSOCIATION_COLUMNS), nrow = 0))
@@ -125,301 +149,436 @@ Association <- function(data = NULL, mode = "Fat") {
   obj@snp_effect_alleles <- data.frame(matrix(ncol = length(SNP_EFFECT_ALLELES_COLUMNS), nrow = 0))
   colnames(obj@snp_effect_alleles) <- SNP_EFFECT_ALLELES_COLUMNS
 
-  if (mode == "Fat") {
-    standardized_data <- list()
-    for (item in normalized_data) {
-      if (is.list(item)) {
-        rec <- item
+  if (mode == "Thin") {
+    obj@raw_data <- normalized_data
+    return(obj)
+  }
 
-        standardized <- list()
-        for (col in ASSOCIATION_COLUMNS) {
-          value <- rec[[col]]
-          if (col == 'range') {
-            if (is.null(value)) {
-              value <- NA
-            } else if (is.list(value)) {
-              if (length(value) == 0) {
-                value <- NA
-              } else if (length(value) == 1) {
-                value <- if (is.null(value[[1]])) NA else as.character(value[[1]])
+  # Fat mode: standardize fixed columns, keep nested fields, fill missing with NA
+  standardized_data <- list()
+  for (item in normalized_data) {
+    standardized <- list()
+    for (col in ASSOCIATION_COLUMNS) {
+      value <- item[[col]]
+      if (col == "range") {
+        if (is.null(value)) {
+          value <- NA
+        } else if (is.list(value)) {
+          if (length(value) == 0) {
+            value <- NA
+          } else if (length(value) == 1) {
+            value <- if (is.null(value[[1]])) NA else as.character(value[[1]])
+          } else {
+            pieces <- character(length(value))
+            for (v_idx in seq_along(value)) {
+              pieces[v_idx] <- if (is.null(value[[v_idx]])) {
+                ""
               } else {
-                value <- paste(sapply(value, function(v) if (is.null(v)) '' else as.character(v)), collapse = '; ')
+                as.character(value[[v_idx]])
               }
-            } else {
-              value <- as.character(value)
             }
+            value <- paste(pieces, collapse = "; ")
           }
-          standardized[[col]] <- value
-        }
-
-        for (field in NESTED_FIELDS) {
-          standardized[[field]] <- rec[[field]]
-        }
-
-        standardized_data <- c(standardized_data, list(standardized))
-      }
-    }
-
-    obj@raw_data <- standardized_data
-
-    if (length(standardized_data) == 0) {
-      return(obj)
-    }
-
-    association_rows <- list()
-    efo_traits_rows <- list()
-    snp_allele_rows <- list()
-    bg_efo_traits_rows <- list()
-    reported_traits_rows <- list()
-    locations_rows <- list()
-    mapped_genes_rows <- list()
-    snp_effect_alleles_rows <- list()
-
-    for (record in standardized_data) {
-      association_id <- record$association_id
-
-      association_row <- list()
-      for (col in ASSOCIATION_COLUMNS) {
-        association_row[[col]] <- record[[col]]
-      }
-      association_rows <- c(association_rows, list(association_row))
-
-      raw_efo_traits <- record$efo_traits
-      if (is.null(raw_efo_traits)) {
-        iterable_efo_traits <- list()
-      } else if (is.list(raw_efo_traits)) {
-        iterable_efo_traits <- raw_efo_traits
-      } else {
-        iterable_efo_traits <- list(raw_efo_traits)
-      }
-      for (item in iterable_efo_traits) {
-        if (is.list(item)) {
-          efo_traits_rows <- c(efo_traits_rows, list(list(
-            association_id = association_id,
-            efo_id = item$efo_id,
-            efo_trait = item$efo_trait
-          )))
         } else {
-          efo_traits_rows <- c(efo_traits_rows, list(list(
-            association_id = association_id,
-            efo_id = NA,
-            efo_trait = item
-          )))
+          value <- as.character(value)
         }
       }
+      standardized[[col]] <- value
+    }
 
-      raw_snp_allele <- record$snp_allele
-      if (is.null(raw_snp_allele)) {
-        iterable_snp_allele <- list()
-      } else if (is.list(raw_snp_allele)) {
-        iterable_snp_allele <- raw_snp_allele
-      } else {
-        iterable_snp_allele <- list(raw_snp_allele)
-      }
-      for (item in iterable_snp_allele) {
-        if (is.list(item)) {
-          snp_allele_rows <- c(snp_allele_rows, list(list(
-            association_id = association_id,
-            rs_id = item$rs_id,
-            effect_allele = item$effect_allele
-          )))
-        } else {
-          snp_allele_rows <- c(snp_allele_rows, list(list(
-            association_id = association_id,
-            rs_id = item,
-            effect_allele = NA
-          )))
-        }
-      }
+    for (field in NESTED_FIELDS) {
+      standardized[[field]] <- item[[field]]
+    }
 
-      raw_bg_efo_traits <- record$bg_efo_traits
-      if (is.null(raw_bg_efo_traits)) {
-        iterable_bg_efo_traits <- list()
-      } else if (is.list(raw_bg_efo_traits)) {
-        iterable_bg_efo_traits <- raw_bg_efo_traits
-      } else {
-        iterable_bg_efo_traits <- list(raw_bg_efo_traits)
-      }
-      for (item in iterable_bg_efo_traits) {
-        if (is.list(item)) {
-          bg_efo_traits_rows <- c(bg_efo_traits_rows, list(list(
-            association_id = association_id,
-            efo_id = item$efo_id,
-            efo_trait = item$efo_trait
-          )))
-        } else {
-          bg_efo_traits_rows <- c(bg_efo_traits_rows, list(list(
-            association_id = association_id,
-            efo_id = NA,
-            efo_trait = item
-          )))
-        }
-      }
+    standardized_data <- c(standardized_data, list(standardized))
+  }
 
-      raw_reported_trait <- record$reported_trait
-      if (is.null(raw_reported_trait)) {
-        iterable_reported_trait <- list()
-      } else if (is.list(raw_reported_trait)) {
-        iterable_reported_trait <- raw_reported_trait
-      } else {
-        iterable_reported_trait <- list(raw_reported_trait)
-      }
-      for (item in iterable_reported_trait) {
-        reported_traits_rows <- c(reported_traits_rows, list(list(
+  obj@raw_data <- standardized_data
+
+  if (length(standardized_data) == 0) {
+    return(obj)
+  }
+
+  association_rows <- list()
+  efo_traits_rows <- list()
+  snp_allele_rows <- list()
+  bg_efo_traits_rows <- list()
+  reported_traits_rows <- list()
+  locations_rows <- list()
+  mapped_genes_rows <- list()
+  snp_effect_alleles_rows <- list()
+
+  for (record in standardized_data) {
+    association_id <- record$association_id
+
+    # Main table: fixed columns, missing filled with NA
+    association_rows <- c(
+      association_rows,
+      list(record[ASSOCIATION_COLUMNS])
+    )
+
+    # efo_traits
+    raw_efo_traits <- record$efo_traits
+    if (is.null(raw_efo_traits)) {
+      iterable_efo_traits <- list()
+    } else if (is.list(raw_efo_traits) && is.null(names(raw_efo_traits))) {
+      iterable_efo_traits <- raw_efo_traits
+    } else {
+      iterable_efo_traits <- list(raw_efo_traits)
+    }
+    for (item in iterable_efo_traits) {
+      if (is.list(item) && !is.null(names(item))) {
+        efo_traits_rows <- c(efo_traits_rows, list(list(
           association_id = association_id,
-          reported_trait = item
+          efo_id = item$efo_id,
+          efo_trait = item$efo_trait
         )))
-      }
-
-      raw_locations <- record$locations
-      if (is.null(raw_locations)) {
-        iterable_locations <- list()
-      } else if (is.list(raw_locations)) {
-        iterable_locations <- raw_locations
       } else {
-        iterable_locations <- list(raw_locations)
-      }
-      for (item in iterable_locations) {
-        locations_rows <- c(locations_rows, list(list(
+        efo_traits_rows <- c(efo_traits_rows, list(list(
           association_id = association_id,
-          location = item
-        )))
-      }
-
-      raw_mapped_genes <- record$mapped_genes
-      if (is.null(raw_mapped_genes)) {
-        iterable_mapped_genes <- list()
-      } else if (is.list(raw_mapped_genes)) {
-        iterable_mapped_genes <- raw_mapped_genes
-      } else {
-        iterable_mapped_genes <- list(raw_mapped_genes)
-      }
-      for (item in iterable_mapped_genes) {
-        mapped_genes_rows <- c(mapped_genes_rows, list(list(
-          association_id = association_id,
-          mapped_gene = item
-        )))
-      }
-
-      raw_snp_effect_allele <- record$snp_effect_allele
-      if (is.null(raw_snp_effect_allele)) {
-        iterable_snp_effect_allele <- list()
-      } else if (is.list(raw_snp_effect_allele)) {
-        iterable_snp_effect_allele <- raw_snp_effect_allele
-      } else {
-        iterable_snp_effect_allele <- list(raw_snp_effect_allele)
-      }
-      for (item in iterable_snp_effect_allele) {
-        snp_effect_alleles_rows <- c(snp_effect_alleles_rows, list(list(
-          association_id = association_id,
-          snp_effect_allele = item
+          efo_id = NA,
+          efo_trait = item
         )))
       }
     }
 
-    if (length(association_rows) > 0) {
-      for (i in seq_along(association_rows)) {
-        row <- association_rows[[i]]
-        for (col in ASSOCIATION_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
-        }
-        association_rows[[i]] <- row[ASSOCIATION_COLUMNS]
+    # snp_allele
+    raw_snp_allele <- record$snp_allele
+    if (is.null(raw_snp_allele)) {
+      iterable_snp_allele <- list()
+    } else if (is.list(raw_snp_allele) && is.null(names(raw_snp_allele))) {
+      iterable_snp_allele <- raw_snp_allele
+    } else {
+      iterable_snp_allele <- list(raw_snp_allele)
+    }
+    for (item in iterable_snp_allele) {
+      if (is.list(item) && !is.null(names(item))) {
+        snp_allele_rows <- c(snp_allele_rows, list(list(
+          association_id = association_id,
+          rs_id = item$rs_id,
+          effect_allele = item$effect_allele
+        )))
+      } else {
+        snp_allele_rows <- c(snp_allele_rows, list(list(
+          association_id = association_id,
+          rs_id = item,
+          effect_allele = NA
+        )))
       }
-      obj@associations <- do.call(rbind, lapply(association_rows, data.frame, stringsAsFactors = FALSE))
     }
 
-    if (length(efo_traits_rows) > 0) {
-      for (i in seq_along(efo_traits_rows)) {
-        row <- efo_traits_rows[[i]]
-        for (col in EFO_TRAITS_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
-        }
-        efo_traits_rows[[i]] <- row[EFO_TRAITS_COLUMNS]
+    # bg_efo_traits
+    raw_bg_efo_traits <- record$bg_efo_traits
+    if (is.null(raw_bg_efo_traits)) {
+      iterable_bg_efo_traits <- list()
+    } else if (is.list(raw_bg_efo_traits) && is.null(names(raw_bg_efo_traits))) {
+      iterable_bg_efo_traits <- raw_bg_efo_traits
+    } else {
+      iterable_bg_efo_traits <- list(raw_bg_efo_traits)
+    }
+    for (item in iterable_bg_efo_traits) {
+      if (is.list(item) && !is.null(names(item))) {
+        bg_efo_traits_rows <- c(bg_efo_traits_rows, list(list(
+          association_id = association_id,
+          efo_id = item$efo_id,
+          efo_trait = item$efo_trait
+        )))
+      } else {
+        bg_efo_traits_rows <- c(bg_efo_traits_rows, list(list(
+          association_id = association_id,
+          efo_id = NA,
+          efo_trait = item
+        )))
       }
-      obj@efo_traits <- do.call(rbind, lapply(efo_traits_rows, data.frame, stringsAsFactors = FALSE))
     }
 
-    if (length(snp_allele_rows) > 0) {
-      for (i in seq_along(snp_allele_rows)) {
-        row <- snp_allele_rows[[i]]
-        for (col in SNP_ALLELE_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
-        }
-        snp_allele_rows[[i]] <- row[SNP_ALLELE_COLUMNS]
-      }
-      obj@snp_allele <- do.call(rbind, lapply(snp_allele_rows, data.frame, stringsAsFactors = FALSE))
+    # reported_traits (attribute stays plural, data field is reported_trait)
+    raw_reported_trait <- record$reported_trait
+    if (is.null(raw_reported_trait)) {
+      iterable_reported_trait <- list()
+    } else if (is.list(raw_reported_trait) && is.null(names(raw_reported_trait))) {
+      iterable_reported_trait <- raw_reported_trait
+    } else {
+      iterable_reported_trait <- list(raw_reported_trait)
+    }
+    for (item in iterable_reported_trait) {
+      reported_traits_rows <- c(reported_traits_rows, list(list(
+        association_id = association_id,
+        reported_trait = item
+      )))
     }
 
-    if (length(bg_efo_traits_rows) > 0) {
-      for (i in seq_along(bg_efo_traits_rows)) {
-        row <- bg_efo_traits_rows[[i]]
-        for (col in BG_EFO_TRAITS_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
-        }
-        bg_efo_traits_rows[[i]] <- row[BG_EFO_TRAITS_COLUMNS]
-      }
-      obj@bg_efo_traits <- do.call(rbind, lapply(bg_efo_traits_rows, data.frame, stringsAsFactors = FALSE))
+    # locations
+    raw_locations <- record$locations
+    if (is.null(raw_locations)) {
+      iterable_locations <- list()
+    } else if (is.list(raw_locations) && is.null(names(raw_locations))) {
+      iterable_locations <- raw_locations
+    } else {
+      iterable_locations <- list(raw_locations)
+    }
+    for (item in iterable_locations) {
+      locations_rows <- c(locations_rows, list(list(
+        association_id = association_id,
+        locations = item
+      )))
     }
 
-    if (length(reported_traits_rows) > 0) {
-      for (i in seq_along(reported_traits_rows)) {
-        row <- reported_traits_rows[[i]]
-        for (col in REPORTED_TRAITS_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
-        }
-        reported_traits_rows[[i]] <- row[REPORTED_TRAITS_COLUMNS]
-      }
-      obj@reported_traits <- do.call(rbind, lapply(reported_traits_rows, data.frame, stringsAsFactors = FALSE))
+    # mapped_genes
+    raw_mapped_genes <- record$mapped_genes
+    if (is.null(raw_mapped_genes)) {
+      iterable_mapped_genes <- list()
+    } else if (is.list(raw_mapped_genes) && is.null(names(raw_mapped_genes))) {
+      iterable_mapped_genes <- raw_mapped_genes
+    } else {
+      iterable_mapped_genes <- list(raw_mapped_genes)
+    }
+    for (item in iterable_mapped_genes) {
+      mapped_genes_rows <- c(mapped_genes_rows, list(list(
+        association_id = association_id,
+        mapped_genes = item
+      )))
     }
 
-    if (length(locations_rows) > 0) {
-      for (i in seq_along(locations_rows)) {
-        row <- locations_rows[[i]]
-        for (col in LOCATIONS_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
-        }
-        locations_rows[[i]] <- row[LOCATIONS_COLUMNS]
-      }
-      obj@locations <- do.call(rbind, lapply(locations_rows, data.frame, stringsAsFactors = FALSE))
+    # snp_effect_alleles (attribute stays plural, data field is snp_effect_allele)
+    raw_snp_effect_allele <- record$snp_effect_allele
+    if (is.null(raw_snp_effect_allele)) {
+      iterable_snp_effect_allele <- list()
+    } else if (is.list(raw_snp_effect_allele) && is.null(names(raw_snp_effect_allele))) {
+      iterable_snp_effect_allele <- raw_snp_effect_allele
+    } else {
+      iterable_snp_effect_allele <- list(raw_snp_effect_allele)
     }
+    for (item in iterable_snp_effect_allele) {
+      snp_effect_alleles_rows <- c(snp_effect_alleles_rows, list(list(
+        association_id = association_id,
+        snp_effect_allele = item
+      )))
+    }
+  }
 
-    if (length(mapped_genes_rows) > 0) {
-      for (i in seq_along(mapped_genes_rows)) {
-        row <- mapped_genes_rows[[i]]
-        for (col in MAPPED_GENES_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
+  # Build associations data.frame
+  if (length(association_rows) > 0) {
+    built <- data.frame(row.names = seq_along(association_rows))
+    for (col in ASSOCIATION_COLUMNS) {
+      col_values <- vector("list", length(association_rows))
+      for (r_idx in seq_along(association_rows)) {
+        cell <- association_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
         }
-        mapped_genes_rows[[i]] <- row[MAPPED_GENES_COLUMNS]
+        col_values[[r_idx]] <- cell
       }
-      obj@mapped_genes <- do.call(rbind, lapply(mapped_genes_rows, data.frame, stringsAsFactors = FALSE))
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
     }
+    obj@associations <- built
+  }
 
-    if (length(snp_effect_alleles_rows) > 0) {
-      for (i in seq_along(snp_effect_alleles_rows)) {
-        row <- snp_effect_alleles_rows[[i]]
-        for (col in SNP_EFFECT_ALLELES_COLUMNS) {
-          if (!col %in% names(row)) {
-            row[[col]] <- NA
-          }
+  # Build efo_traits data.frame
+  if (length(efo_traits_rows) > 0) {
+    built <- data.frame(row.names = seq_along(efo_traits_rows))
+    for (col in EFO_TRAITS_COLUMNS) {
+      col_values <- vector("list", length(efo_traits_rows))
+      for (r_idx in seq_along(efo_traits_rows)) {
+        cell <- efo_traits_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
         }
-        snp_effect_alleles_rows[[i]] <- row[SNP_EFFECT_ALLELES_COLUMNS]
+        col_values[[r_idx]] <- cell
       }
-      obj@snp_effect_alleles <- do.call(rbind, lapply(snp_effect_alleles_rows, data.frame, stringsAsFactors = FALSE))
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
     }
+    obj@efo_traits <- built
+  }
+
+  # Build snp_allele data.frame
+  if (length(snp_allele_rows) > 0) {
+    built <- data.frame(row.names = seq_along(snp_allele_rows))
+    for (col in SNP_ALLELE_COLUMNS) {
+      col_values <- vector("list", length(snp_allele_rows))
+      for (r_idx in seq_along(snp_allele_rows)) {
+        cell <- snp_allele_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
+        }
+        col_values[[r_idx]] <- cell
+      }
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
+    }
+    obj@snp_allele <- built
+  }
+
+  # Build bg_efo_traits data.frame
+  if (length(bg_efo_traits_rows) > 0) {
+    built <- data.frame(row.names = seq_along(bg_efo_traits_rows))
+    for (col in BG_EFO_TRAITS_COLUMNS) {
+      col_values <- vector("list", length(bg_efo_traits_rows))
+      for (r_idx in seq_along(bg_efo_traits_rows)) {
+        cell <- bg_efo_traits_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
+        }
+        col_values[[r_idx]] <- cell
+      }
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
+    }
+    obj@bg_efo_traits <- built
+  }
+
+  # Build reported_traits data.frame
+  if (length(reported_traits_rows) > 0) {
+    built <- data.frame(row.names = seq_along(reported_traits_rows))
+    for (col in REPORTED_TRAITS_COLUMNS) {
+      col_values <- vector("list", length(reported_traits_rows))
+      for (r_idx in seq_along(reported_traits_rows)) {
+        cell <- reported_traits_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
+        }
+        col_values[[r_idx]] <- cell
+      }
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
+    }
+    obj@reported_traits <- built
+  }
+
+  # Build locations data.frame
+  if (length(locations_rows) > 0) {
+    built <- data.frame(row.names = seq_along(locations_rows))
+    for (col in LOCATIONS_COLUMNS) {
+      col_values <- vector("list", length(locations_rows))
+      for (r_idx in seq_along(locations_rows)) {
+        cell <- locations_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
+        }
+        col_values[[r_idx]] <- cell
+      }
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
+    }
+    obj@locations <- built
+  }
+
+  # Build mapped_genes data.frame
+  if (length(mapped_genes_rows) > 0) {
+    built <- data.frame(row.names = seq_along(mapped_genes_rows))
+    for (col in MAPPED_GENES_COLUMNS) {
+      col_values <- vector("list", length(mapped_genes_rows))
+      for (r_idx in seq_along(mapped_genes_rows)) {
+        cell <- mapped_genes_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
+        }
+        col_values[[r_idx]] <- cell
+      }
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
+    }
+    obj@mapped_genes <- built
+  }
+
+  # Build snp_effect_alleles data.frame
+  if (length(snp_effect_alleles_rows) > 0) {
+    built <- data.frame(row.names = seq_along(snp_effect_alleles_rows))
+    for (col in SNP_EFFECT_ALLELES_COLUMNS) {
+      col_values <- vector("list", length(snp_effect_alleles_rows))
+      for (r_idx in seq_along(snp_effect_alleles_rows)) {
+        cell <- snp_effect_alleles_rows[[r_idx]][[col]]
+        if (is.null(cell)) {
+          cell <- NA
+        }
+        col_values[[r_idx]] <- cell
+      }
+      atomic_col <- TRUE
+      for (cell in col_values) {
+        if (!is.atomic(cell) || length(cell) != 1) {
+          atomic_col <- FALSE
+          break
+        }
+      }
+      if (atomic_col) {
+        built[[col]] <- unlist(col_values)
+      } else {
+        built[[col]] <- col_values
+      }
+    }
+    obj@snp_effect_alleles <- built
   }
 
   return(obj)
@@ -430,7 +589,7 @@ setMethod(
   "show",
   signature = "Association",
   function(object) {
-    if (object@mode == 'Fat') {
+    if (object@mode == "Fat") {
       cat(
         "Association is running in fat mode. It has 8 DataFrames with hierarchical dependencies.\n",
         "associations: ", nrow(object@associations), " rows\n",
@@ -443,10 +602,10 @@ setMethod(
         "|\n -snp_effect_alleles: ", nrow(object@snp_effect_alleles), " rows\n",
         sep = ""
       )
-    } else if (object@mode == 'Thin') {
+    } else if (object@mode == "Thin") {
       cat(
-        'Association is running in thin mode. It has 1 list that contains the raw data.\n',
-        'raw_data: a list of size ', length(object@raw_data), '.\n',
+        "Association is running in thin mode. It has 1 list that contains the raw data.\n",
+        "raw_data: a list of size ", length(object@raw_data), ".\n",
         sep = ""
       )
     }
@@ -497,10 +656,8 @@ setMethod(
       arr <- i
     } else if (is.list(i)) {
       arr <- unlist(i)
-    } else if (class(i) == 'integer64') {
-      arr <- as.numeric(i)
     } else {
-      stop('Invalid argument type: ', class(i))
+      stop("Invalid argument type: ", class(i))
     }
 
     raw_data <- x@raw_data
@@ -514,15 +671,19 @@ setMethod(
     sub_set <- list()
     for (i_val in arr) {
       if (is.character(i_val)) {
-        if (i_val %in% names(raw_data_dict)) {
-          sub_set <- c(sub_set, list(raw_data_dict[[i_val]]))
+        if (!i_val %in% names(raw_data_dict)) {
+          stop("Unknown association_id: ", i_val)
         }
+        sub_set <- c(sub_set, list(raw_data_dict[[i_val]]))
       } else if (is.numeric(i_val)) {
-        if (i_val >= 1 && i_val <= length(raw_data)) {
-          sub_set <- c(sub_set, list(raw_data[[i_val]]))
+        position <- as.integer(i_val)
+        if (is.na(position) || position < 1 ||
+            position > length(raw_data)) {
+          stop("subscript out of bounds: ", i_val)
         }
+        sub_set <- c(sub_set, list(raw_data[[position]]))
       } else {
-        stop('Invalid item type: ', class(i_val))
+        stop("Invalid item type: ", class(i_val))
       }
     }
 

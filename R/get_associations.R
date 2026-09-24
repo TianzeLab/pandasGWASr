@@ -1,21 +1,33 @@
-#' Get associations from GWAS API
+#' Get Association data from the server
 #'
-#' This function retrieves association data from the GWAS API based on various search criteria.
+#' This function retrieves association data from the GWAS API based on various
+#' search criteria.
 #'
-#' @param association_id The association ID to search for
-#' @param pubmed_id The PubMed ID to search for
-#' @param rs_id The SNP RS ID to search for
-#' @param full_pvalue_set Whether to include full p-value set
-#' @param accession_id The study accession ID to search for
-#' @param efo_trait The EFO trait to search for
-#' @param efo_id The EFO ID to search for
-#' @param show_child_trait Whether to show child traits
-#' @param mapped_gene The mapped gene to search for
-#' @param extended_geneset Whether to use extended geneset
-#' @param cached Logical value indicating whether to use cached responses
-#' @param mode The mode of the Association object ("Fat" or "Thin")
+#' @param association_id Primary identifier of association table
+#' @param pubmed_id pubmedId of the publication
+#' @param rs_id SNP rsID; if a haplotype it may include more than one rs number
+#'   (multiple SNPs comprising the haplotype)
+#' @param full_pvalue_set Whether full summary statistics are available for this
+#'   study
+#' @param accession_id The study's GWAS Catalog accession ID
+#' @param efo_trait The trait name or label
+#' @param efo_id The trait URI shortform
+#' @param show_child_trait display entities for descendants of a parent Efo Trait
+#'   Term
+#' @param mapped_gene Gene(s) overlapping the variant. If a variant is
+#'   intergenic, the closest 5' and 3' genes are listed
+#' @param extended_geneset Show extended matching genes in addition to the mapped
+#'   genes
+#' @param cached Whether or not to try to get data from the cache
+#' @param mode Fat or Thin. Specifies the mode of the returned object
 #'
-#' @return An Association object containing the retrieved data
+#' @return An Association object. Attributes of type data.frame have hierarchical
+#'   dependencies
+#'
+#' @examples
+#' \dontrun{
+#' ch <- get_associations(association_id = "169106883")
+#' }
 #'
 #' @export
 #'
@@ -35,34 +47,38 @@ get_associations <- function(
 ) {
   BASE_URL <- "https://www.ebi.ac.uk/gwas/rest/api/v2/associations"
 
-  params <- list()
+  params <- list(
+    pubmed_id = pubmed_id,
+    rs_id = rs_id,
+    full_pvalue_set = full_pvalue_set,
+    accession_id = accession_id,
+    efo_trait = efo_trait,
+    efo_id = efo_id,
+    show_child_trait = show_child_trait,
+    mapped_gene = mapped_gene,
+    extended_geneset = extended_geneset
+  )
+  params <- params[!vapply(params, is.null, logical(1))]
 
-  if (!is.null(pubmed_id)) {
-    params$pubmed_id <- pubmed_id
-  }
-  if (!is.null(rs_id)) {
-    params$rs_id <- rs_id
-  }
-  if (!is.null(full_pvalue_set)) {
-    params$full_pvalue_set <- full_pvalue_set
-  }
-  if (!is.null(accession_id)) {
-    params$accession_id <- accession_id
-  }
-  if (!is.null(efo_trait)) {
-    params$efo_trait <- efo_trait
-  }
-  if (!is.null(efo_id)) {
-    params$efo_id <- efo_id
-  }
-  if (!is.null(show_child_trait)) {
-    params$show_child_trait <- show_child_trait
-  }
-  if (!is.null(mapped_gene)) {
-    params$mapped_gene <- mapped_gene
-  }
-  if (!is.null(extended_geneset)) {
-    params$extended_geneset <- extended_geneset
+  if (length(params) > 0) {
+    encoded_pieces <- character(0)
+    for (param_name in names(params)) {
+      raw_value <- params[[param_name]]
+      if (is.logical(raw_value)) {
+        value_str <- if (raw_value) "True" else "False"
+      } else {
+        value_str <- as.character(raw_value)
+      }
+      encoded_value <- gsub(
+        "%20", "+",
+        URLencode(enc2utf8(value_str), reserved = TRUE),
+        fixed = TRUE
+      )
+      encoded_pieces <- c(encoded_pieces, paste0(param_name, "=", encoded_value))
+    }
+    query_url <- paste0(BASE_URL, "?", paste(encoded_pieces, collapse = "&"))
+  } else {
+    query_url <- BASE_URL
   }
 
   has_id <- !is.null(association_id)
@@ -72,7 +88,10 @@ get_associations <- function(
   result_by_query <- NULL
 
   if (has_id) {
-    id_url <- paste0(BASE_URL, "/", URLencode(association_id, reserved = TRUE))
+    id_url <- paste0(
+      BASE_URL, "/",
+      URLencode(enc2utf8(as.character(association_id)), reserved = TRUE)
+    )
     result_by_id <- Association(
       data = get_association(id_url, cached = cached),
       mode = mode
@@ -80,16 +99,6 @@ get_associations <- function(
   }
 
   if (!has_id || has_query_filters) {
-    if (has_query_filters) {
-      encoded_params <- lapply(params, function(value) {
-        URLencode(as.character(value), reserved = TRUE)
-      })
-      query_string <- paste(names(encoded_params), encoded_params, sep = "=", collapse = "&")
-      query_url <- paste0(BASE_URL, "?", query_string)
-    } else {
-      query_url <- BASE_URL
-    }
-
     result_by_query <- Association(
       data = get_association(query_url, cached = cached),
       mode = mode

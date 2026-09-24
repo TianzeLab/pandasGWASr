@@ -2,7 +2,7 @@
 % Please edit documentation in R/get_associations.R
 \name{get_associations}
 \alias{get_associations}
-\title{Get associations from GWAS API}
+\title{Get Association data from the server}
 \usage{
 get_associations(
   association_id = NULL,
@@ -20,33 +20,46 @@ get_associations(
 )
 }
 \arguments{
-\item{association_id}{The association ID to search for}
+\item{association_id}{Primary identifier of association table}
 
-\item{pubmed_id}{The PubMed ID to search for}
+\item{pubmed_id}{pubmedId of the publication}
 
-\item{rs_id}{The SNP RS ID to search for}
+\item{rs_id}{SNP rsID; if a haplotype it may include more than one rs number
+(multiple SNPs comprising the haplotype)}
 
-\item{full_pvalue_set}{Whether to include full p-value set}
+\item{full_pvalue_set}{Whether full summary statistics are available for this
+study}
 
-\item{accession_id}{The study accession ID to search for}
+\item{accession_id}{The study's GWAS Catalog accession ID}
 
-\item{efo_trait}{The EFO trait to search for}
+\item{efo_trait}{The trait name or label}
 
-\item{efo_id}{The EFO ID to search for}
+\item{efo_id}{The trait URI shortform}
 
-\item{show_child_trait}{Whether to show child traits}
+\item{show_child_trait}{display entities for descendants of a parent Efo Trait
+Term}
 
-\item{mapped_gene}{The mapped gene to search for}
+\item{mapped_gene}{Gene(s) overlapping the variant. If a variant is
+intergenic, the closest 5' and 3' genes are listed}
 
-\item{extended_geneset}{Whether to use extended geneset}
+\item{extended_geneset}{Show extended matching genes in addition to the mapped
+genes}
 
-\item{cached}{Logical value indicating whether to use cached responses}
+\item{cached}{Whether or not to try to get data from the cache}
 
-\item{mode}{The mode of the Association object ("Fat" or "Thin")}
+\item{mode}{Fat or Thin. Specifies the mode of the returned object}
 }
 \value{
-An Association object containing the retrieved data
+An Association object. Attributes of type data.frame have hierarchical
+  dependencies
 }
 \description{
-This function retrieves association data from the GWAS API based on various search criteria.
+This function retrieves association data from the GWAS API based on various
+search criteria.
+}
+\examples{
+\dontrun{
+ch <- get_associations(association_id = "169106883")
+}
+
 }

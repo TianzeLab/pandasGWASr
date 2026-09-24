@@ -16,7 +16,8 @@ ask_yes_no_question <- function(question) {
 
 #' Get data from GWAS API
 #'
-#' This function retrieves data from the GWAS API, handling caching and pagination.
+#' This function retrieves data from the GWAS API, handling caching, pagination,
+#' composite key extraction from self links and removal of link fields.
 #'
 #' @param url The URL to request data from
 #' @param cache_impl A cachem cache object used for caching responses
@@ -26,10 +27,11 @@ ask_yes_no_question <- function(question) {
 #' @return A list of data objects retrieved from the API
 #'
 #' @importFrom httr2 request req_headers req_perform resp_status
-#' @importFrom httr2 resp_body_string req_cookie_preserve
+#' @importFrom httr2 resp_body_string req_cookie_preserve req_retry req_error
 #' @importFrom jsonlite fromJSON
 #' @importFrom progress progress_bar
 #' @importFrom cachem cache_mem
+#' @importFrom rlang hash
 #'
 #' @noRd
 #'
@@ -37,111 +39,206 @@ get_data <- function(url,
                      cache_impl = NULL,
                      cached = TRUE,
                      type = NULL) {
+  if (is.null(cache_impl)) {
+    cache_impl <- cachem::cache_mem()
+  }
+
   cookie_path <- tempfile()
-  # 检查缓存
-  if (cache_impl$exists(clean_string(url)) && cached) {
-    r <- cache_impl$get(clean_string(url))
+
+  # Check cache. Python keys on the exact URL; cachem only permits lowercase
+  # letters/numbers/_/- as keys, so use the URL's deterministic hash
+  if (cached && cache_impl$exists(hash(url))) {
+    r <- cache_impl$get(hash(url))
   } else {
-    # 发送HTTP请求
-    r <- httr2::request(url) |> req_cookie_preserve(cookie_path) |>
+    r <- httr2::request(url) |>
+      httr2::req_cookie_preserve(cookie_path) |>
       httr2::req_headers(Accept = "application/json") |>
+      httr2::req_retry(max_tries = 6) |>
+      httr2::req_error(is_error = ~FALSE) |>
       httr2::req_perform() # nolint
   }
-  # 处理响应
+
   if (httr2::resp_status(r) == 200) {
-    content <- httr2::resp_body_string(r)
-    if (nchar(content) == 0) {
+    if (is.null(r$body) || length(r$body) == 0) {
       return(list())
     }
-    cache_impl$set(clean_string(url), r)
-    # 解析JSON
+    content <- httr2::resp_body_string(r)
+
     parsed_data <- jsonlite::fromJSON(content, simplifyVector = FALSE)
-    # 处理嵌入式数据
+    if (length(parsed_data) == 0) {
+      return(list())
+    }
+    cache_impl$set(hash(url), r)
+
     if (!is.null(parsed_data[["_embedded"]])) {
       results_list <- parsed_data[["_embedded"]][[type]]
-      # 处理分页
-      if (!is.null(parsed_data[["_links"]])) {
-        next_link <- parsed_data[["_links"]][["next"]]
-        if (!is.null(next_link)) {
-          # 显示进度条
-          total_elements <- parsed_data[["page"]][["totalElements"]]
-          progress <- length(results_list)
+      if (is.null(results_list)) {
+        results_list <- list()
+      }
+
+      # Pagination requires both _links and page information
+      if (!is.null(parsed_data[["_links"]]) &&
+          !is.null(parsed_data[["page"]])) {
+        total_elements <- parsed_data[["page"]][["totalElements"]]
+
+        pb <- NULL
+        if (total_elements > 0) {
           pb <- progress::progress_bar$new(
             format = "  downloading [:bar] :current/:total eta: :eta",
             total = total_elements,
             clear = FALSE,
             width = 60
           )
-          pb$update(progress / total_elements)
+          pb$update(length(results_list) / total_elements)
+        }
 
-          # 循环获取下一页
-          while (!is.null(next_link)) {
-            next_url <- next_link[["href"]]
+        next_link <- parsed_data[["_links"]][["next"]]
 
-            # 检查缓存
-            if (cache_impl$exists(clean_string(next_url)) && cached) {
-              r <- cache_impl$get(clean_string(next_url))
-            } else {
-              # 发送HTTP请求
-              r <- httr2::request(next_url) |> req_cookie_preserve(cookie_path) |>
-                httr2::req_headers(Accept = "application/json") |>
-                httr2::req_perform()
+        while (!is.null(next_link)) {
+          next_url <- next_link[["href"]]
+
+          if (cached && cache_impl$exists(hash(next_url))) {
+            r <- cache_impl$get(hash(next_url))
+          } else {
+            r <- httr2::request(next_url) |>
+              httr2::req_cookie_preserve(cookie_path) |>
+              httr2::req_headers(Accept = "application/json") |>
+              httr2::req_retry(max_tries = 6) |>
+              httr2::req_error(is_error = ~FALSE) |>
+              httr2::req_perform()
+          }
+
+          if (httr2::resp_status(r) == 200) {
+            parsed_next <- jsonlite::fromJSON(
+              httr2::resp_body_string(r),
+              simplifyVector = FALSE
+            )
+            page_results <- parsed_next[["_embedded"]][[type]]
+            if (is.null(page_results)) {
+              page_results <- list()
             }
-            if (httr2::resp_status(r) == 200) {
-              # 解析下一页数据
-              content_next <- httr2::resp_body_string(r)
-              parsed_data_next <- jsonlite::fromJSON(content_next, simplifyVector = FALSE)
-              # 扩展结果列表
-              page_results <- parsed_data_next[["_embedded"]][[type]]
-              results_list <- c(results_list, page_results)
-              # 缓存下一页结果
-              cache_impl$set(clean_string(next_url), r)
-            } else if (httr2::resp_status(r) == 404) {
-              return(list())
-            } else {
-              stop(
-                paste(
-                  "The request for",
-                  next_url,
-                  "failed: response code was",
-                  httr2::resp_status(r),
-                  "content was\n",
-                  httr2::resp_body_string(r)
-                )
-              )
+            results_list <- c(results_list, page_results)
+            cache_impl$set(hash(next_url), r)
+            if (!is.null(pb)) {
+              pb$update(length(results_list) / total_elements)
             }
-            # 更新进度条
-            progress <- length(results_list)
-            pb$update(progress / total_elements)
-
-            # 获取下一页链接
-            next_link <- parsed_data_next[["_links"]][["next"]]
+            next_link <- parsed_next[["_links"]][["next"]]
+          } else if (httr2::resp_status(r) == 404) {
+            return(list())
+          } else {
+            stop(paste(
+              "The request for", next_url,
+              "failed: response code was", httr2::resp_status(r),
+              "content was\n", httr2::resp_body_string(r)
+            ))
           }
         }
+
+        if (!is.null(pb)) {
+          pb$terminate()
+        }
       }
-      for (result in results_list) {
-        result[["_links"]] <- NULL
+
+      # Clean every dict item in place:
+      # extract composite keys from self href, drop links and _links
+      for (item_idx in seq_along(results_list)) {
+        item <- results_list[[item_idx]]
+        if (is.list(item) &&
+            (length(item) == 0 || !is.null(names(item)))) {
+          href <- item[["_links"]][["self"]][["href"]]
+
+          if (type == "ancestries" && !is.null(href)) {
+            match_parts <- regmatches(
+              href,
+              regexec("/studies/([^/]+)/ancestries/([^/?#]+)", href)
+            )[[1]]
+            if (length(match_parts) == 3) {
+              item[["accession_id"]] <- match_parts[2]
+              item[["ancestry_id"]] <- match_parts[3]
+            }
+          } else if (type == "genomic_contexts" && !is.null(href)) {
+            match_parts <- regmatches(
+              href,
+              regexec(
+                "/single-nucleotide-polymorphisms/([^/]+)/genomic-contexts/([^/?#]+)",
+                href
+              )
+            )[[1]]
+            if (length(match_parts) == 3) {
+              item[["rs_id"]] <- match_parts[2]
+              item[["genomicContext_id"]] <- match_parts[3]
+            }
+          } else if (type == "loci" && !is.null(href)) {
+            match_parts <- regmatches(
+              href,
+              regexec("/associations/([^/]+)/loci/([^/?#]+)", href)
+            )[[1]]
+            if (length(match_parts) == 3) {
+              item[["association_id"]] <- match_parts[2]
+              item[["locus_id"]] <- match_parts[3]
+            }
+          }
+
+          item[["links"]] <- NULL
+          item[["_links"]] <- NULL
+          results_list[[item_idx]] <- item
+        }
       }
+
       return(results_list)
-    }
-    else {
+    } else {
+      # A top-level object carrying a page field but no _embedded yields nothing
+      if (!is.null(parsed_data[["page"]])) {
+        return(list())
+      }
+
+      # Clean the single object in place
+      href <- parsed_data[["_links"]][["self"]][["href"]]
+
+      if (type == "ancestries" && !is.null(href)) {
+        match_parts <- regmatches(
+          href,
+          regexec("/studies/([^/]+)/ancestries/([^/?#]+)", href)
+        )[[1]]
+        if (length(match_parts) == 3) {
+          parsed_data[["accession_id"]] <- match_parts[2]
+          parsed_data[["ancestry_id"]] <- match_parts[3]
+        }
+      } else if (type == "genomic_contexts" && !is.null(href)) {
+        match_parts <- regmatches(
+          href,
+          regexec(
+            "/single-nucleotide-polymorphisms/([^/]+)/genomic-contexts/([^/?#]+)",
+            href
+          )
+        )[[1]]
+        if (length(match_parts) == 3) {
+          parsed_data[["rs_id"]] <- match_parts[2]
+          parsed_data[["genomicContext_id"]] <- match_parts[3]
+        }
+      } else if (type == "loci" && !is.null(href)) {
+        match_parts <- regmatches(
+          href,
+          regexec("/associations/([^/]+)/loci/([^/?#]+)", href)
+        )[[1]]
+        if (length(match_parts) == 3) {
+          parsed_data[["association_id"]] <- match_parts[2]
+          parsed_data[["locus_id"]] <- match_parts[3]
+        }
+      }
+
+      parsed_data[["links"]] <- NULL
       parsed_data[["_links"]] <- NULL
       return(list(parsed_data))
     }
-
   } else if (httr2::resp_status(r) == 404) {
     return(list())
   } else {
-    stop(
-      paste(
-        "The request for",
-        url,
-        "failed: response code was",
-        httr2::resp_status(r),
-        "content was\n",
-        httr2::resp_body_string(r)
-      )
-    )
+    stop(paste(
+      "The request for", url,
+      "failed: response code was", httr2::resp_status(r),
+      "content was\n", httr2::resp_body_string(r)
+    ))
   }
 }
 #' Get association data
@@ -389,25 +486,4 @@ reinit_cache <- function(field = "All", maxsize = 2 * 1024, ttl = 60 * 60 * 24) 
     .pandasGWASr$gene_cache <- cache_mem(max_age = ttl, max_size = maxsize)
     .pandasGWASr$locus_cache <- cache_mem(max_age = ttl, max_size = maxsize)
   }
-}
-
-#' 清理字符串：仅保留字母数字 + 转小写
-#'
-#' @param x 输入字符串（字符型）
-#' @return 清理后的字符串（仅字母数字，全小写）
-#' @noRd
-clean_string <- function(x) {
-  # 1. 检查输入
-  if (!is.character(x)) {
-    stop("输入必须是字符型字符串")
-  }
-  
-  # 2. 仅保留 字母 + 数字，移除所有其他符号
-  x_clean <- gsub("[^a-zA-Z0-9]", "", x)
-  
-  # 3. 大写转小写
-  x_clean <- tolower(x_clean)
-  
-  # 返回结果
-  return(x_clean)
 }

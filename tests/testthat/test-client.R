@@ -1,29 +1,12 @@
-# Test cases for get_association function
+# Test cases ported from py/tests/test_client.py
 
-library(testthat)
+# Low-level client fetch of a single trait by its full URL
+test_that("get_trait returns one record for a trait URL", {
+  skip_if_offline()
 
-# Test 1: Test get_association function with a valid URL
-test_that("get_association returns data for valid URL", {
-  # This is a test URL, it might not return actual data
-  # In a real test, you would use a mock API or a test server
-  url <- "https://www.ebi.ac.uk/gwas/rest/api/v2/associations/169106883"
-  
-  # Test with caching enabled
-  result_with_cache <- get_association(url, cached = TRUE)
-  expect_type(result_with_cache, "list")
-  
-  # Test with caching disabled
-  result_without_cache <- get_association(url, cached = FALSE)
-  expect_type(result_without_cache, "list")
+  a_one <- get_trait(
+    "https://www.ebi.ac.uk/gwas/rest/api/v2/efo-traits/EFO_0009713"
+  )
+  expect_type(a_one, "list")
+  expect_equal(length(a_one), 1)
 })
-
-# Test 2: Test get_association function with a non-existent URL
-test_that("get_association returns empty list for 404 URL", {
-  # This URL should return 404
-  url <- "https://www.ebi.ac.uk/gwas/api/v2/associations/non_existent_id"
-  
-  result <- get_association(url)
-  expect_type(result, "list")
-  expect_length(result, 0)
-})
-

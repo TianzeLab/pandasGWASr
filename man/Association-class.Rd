@@ -5,5 +5,31 @@
 \alias{Association-class}
 \title{Association class}
 \description{
-This class represents association data from the GWAS API.
+An S4 class that stores data of type Association fetched from the GWAS API.
+In Fat mode it holds 8 data.frames with hierarchical dependencies; in Thin
+mode it only stores the raw list data.
 }
+\section{Slots}{
+
+\describe{
+\item{\code{raw_data}}{list. Converted from obtained JSON data}
+
+\item{\code{mode}}{character. Fat or Thin}
+
+\item{\code{associations}}{data.frame}
+
+\item{\code{efo_traits}}{data.frame}
+
+\item{\code{snp_allele}}{data.frame}
+
+\item{\code{bg_efo_traits}}{data.frame}
+
+\item{\code{reported_traits}}{data.frame}
+
+\item{\code{locations}}{data.frame}
+
+\item{\code{mapped_genes}}{data.frame}
+
+\item{\code{snp_effect_alleles}}{data.frame}
+}}
+

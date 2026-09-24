@@ -1,301 +1,302 @@
-# Test cases for Association class
+# Offline unit tests for the Association class.
+# py/tests has no dedicated Association test file; class behavior in Python is
+# exercised live through test_get_associations.py. This file covers the same
+# class behavior offline with crafted records shaped like parsed JSON.
 
-library(testthat)
+# --- Construction ----------------------------------------------------------
 
-# Test 1: Test Association constructor with NULL data
-test_that("Association constructor with NULL data", {
+test_that("NULL data yields an empty Fat object", {
   assoc <- Association(NULL, "Fat")
   expect_s4_class(assoc, "Association")
   expect_equal(length(assoc), 0)
   expect_equal(nrow(assoc@associations), 0)
+  expect_equal(nrow(assoc@efo_traits), 0)
+  expect_equal(nrow(assoc@snp_allele), 0)
+  expect_equal(nrow(assoc@bg_efo_traits), 0)
+  expect_equal(nrow(assoc@reported_traits), 0)
+  expect_equal(nrow(assoc@locations), 0)
+  expect_equal(nrow(assoc@mapped_genes), 0)
+  expect_equal(nrow(assoc@snp_effect_alleles), 0)
 })
 
-# Test 2: Test Association constructor with Thin mode
-test_that("Association constructor with Thin mode", {
+test_that("Thin mode stores raw records without building tables", {
   data <- list(
-    list(association_id = "12345", pvalue_mantissa = 1.5, pvalue_exponent = -8)
+    list(association_id = "12345", pvalue_mantissa = 1.5,
+         pvalue_exponent = -8)
   )
   assoc <- Association(data, "Thin")
-  expect_s4_class(assoc, "Association")
   expect_equal(assoc@mode, "Thin")
   expect_equal(length(assoc), 1)
+  expect_equal(assoc@raw_data[[1]]$association_id, "12345")
+  expect_equal(nrow(assoc@associations), 0)
 })
 
-# Test 3: Test Association constructor with Fat mode
-test_that("Association constructor with Fat mode", {
-  data <- list(
-    list(
-      association_id = "12345",
-      pvalue_mantissa = 1.5,
-      pvalue_exponent = -8,
-      efo_traits = list(list(efo_id = "EFO_0001", efo_trait = "Trait1"))
-    )
-  )
+test_that("Fat mode builds the main table and nested tables", {
+  data <- list(list(
+    association_id = "12345",
+    pvalue_mantissa = 1.5,
+    pvalue_exponent = -8,
+    efo_traits = list(list(efo_id = "EFO_0001", efo_trait = "Trait1"))
+  ))
   assoc <- Association(data, "Fat")
-  expect_s4_class(assoc, "Association")
   expect_equal(assoc@mode, "Fat")
   expect_equal(nrow(assoc@associations), 1)
   expect_equal(nrow(assoc@efo_traits), 1)
 })
 
-# Test 4: Test invalid mode
-test_that("Association constructor with invalid mode throws error", {
+test_that("invalid mode is rejected", {
   expect_error(Association(NULL, "Invalid"))
 })
 
-# Test 5: Test length method
-test_that("length method returns correct count", {
+test_that("non-dict items in data are skipped", {
   data <- list(
     list(association_id = "12345"),
-    list(association_id = "67890")
+    1, "x", list(1, 2)
   )
   assoc <- Association(data, "Fat")
-  expect_equal(length(assoc), 2)
+  expect_equal(length(assoc), 1)
 })
 
-# Test 6: Test indexing by numeric
-test_that("indexing by numeric returns correct subset", {
+# --- Main table columns ----------------------------------------------------
+
+test_that("association_id is kept as character", {
+  assoc <- Association(list(list(association_id = 12345)), "Fat")
+  expect_equal(assoc@associations$association_id, "12345")
+  expect_equal(assoc@raw_data[[1]]$association_id, "12345")
+})
+
+test_that("range joins multiple values, single values pass through, NULL is NA", {
+  data <- list(
+    list(association_id = "1", range = list("chr1", "chr2")),
+    list(association_id = "2", range = list("chr3")),
+    list(association_id = "3")
+  )
+  assoc <- Association(data, "Fat")
+  expect_equal(assoc@associations$range[1], "chr1; chr2")
+  expect_equal(assoc@associations$range[2], "chr3")
+  expect_true(is.na(assoc@associations$range[3]))
+})
+
+test_that("missing fixed columns are filled with NA, types are preserved", {
+  assoc <- Association(list(list(
+    association_id = "12345", pvalue_mantissa = 5,
+    multi_snp_haplotype = FALSE
+  )), "Fat")
+  expect_true(is.numeric(assoc@associations$pvalue_mantissa))
+  expect_true(is.logical(assoc@associations$multi_snp_haplotype))
+  expect_true(is.na(assoc@associations$beta_num))
+})
+
+# --- Nested table extraction -----------------------------------------------
+
+test_that("multiple efo_traits and bg_efo_traits expand to rows", {
+  data <- list(list(
+    association_id = "12345",
+    efo_traits = list(
+      list(efo_id = "EFO_0001", efo_trait = "Trait1"),
+      list(efo_id = "EFO_0002", efo_trait = "Trait2")
+    ),
+    bg_efo_traits = list(
+      list(efo_id = "EFO_0001", efo_trait = "Trait1")
+    )
+  ))
+  assoc <- Association(data, "Fat")
+  expect_equal(nrow(assoc@efo_traits), 2)
+  expect_equal(nrow(assoc@bg_efo_traits), 1)
+  expect_equal(assoc@efo_traits$efo_id, c("EFO_0001", "EFO_0002"))
+  expect_true(all(assoc@efo_traits$association_id == "12345"))
+})
+
+test_that("single-object snp_allele (named list) yields one row", {
+  data <- list(list(
+    association_id = "12345",
+    snp_allele = list(rs_id = "rs123", effect_allele = "A")
+  ))
+  assoc <- Association(data, "Fat")
+  expect_equal(nrow(assoc@snp_allele), 1)
+  expect_equal(assoc@snp_allele$rs_id, "rs123")
+  expect_equal(assoc@snp_allele$effect_allele, "A")
+  expect_equal(
+    colnames(assoc@snp_allele),
+    c("association_id", "rs_id", "effect_allele")
+  )
+})
+
+test_that("scalar reported_trait yields one row", {
+  assoc <- Association(list(list(
+    association_id = "12345", reported_trait = "Some disease"
+  )), "Fat")
+  expect_equal(nrow(assoc@reported_traits), 1)
+  expect_equal(assoc@reported_traits$reported_trait, "Some disease")
+})
+
+test_that("locations become a list column with plural column name", {
+  data <- list(list(
+    association_id = "12345",
+    locations = list(
+      list(chromosome_name = "1", chromosome_position = 100L),
+      list(chromosome_name = "2", chromosome_position = 200L)
+    )
+  ))
+  assoc <- Association(data, "Fat")
+  expect_equal(nrow(assoc@locations), 2)
+  expect_equal(colnames(assoc@locations), c("association_id", "locations"))
+  expect_true(is.list(assoc@locations$locations))
+  expect_equal(
+    assoc@locations$locations[[1]],
+    list(chromosome_name = "1", chromosome_position = 100L)
+  )
+})
+
+test_that("mapped_genes flatten into a character column with plural name", {
+  data <- list(list(
+    association_id = "12345", mapped_genes = list("GENE1", "GENE2")
+  ))
+  assoc <- Association(data, "Fat")
+  expect_equal(nrow(assoc@mapped_genes), 2)
+  expect_equal(colnames(assoc@mapped_genes),
+               c("association_id", "mapped_genes"))
+  expect_equal(assoc@mapped_genes$mapped_genes, c("GENE1", "GENE2"))
+})
+
+test_that("snp_effect_allele expands into the plural-named table", {
+  data <- list(list(
+    association_id = "12345", snp_effect_allele = list("A", "T")
+  ))
+  assoc <- Association(data, "Fat")
+  expect_equal(nrow(assoc@snp_effect_alleles), 2)
+  expect_equal(assoc@snp_effect_alleles$snp_effect_allele, c("A", "T"))
+})
+
+test_that("NULL nested fields yield zero child rows", {
+  assoc <- Association(list(list(association_id = "12345")), "Fat")
+  expect_equal(nrow(assoc@efo_traits), 0)
+  expect_equal(nrow(assoc@snp_allele), 0)
+  expect_equal(nrow(assoc@reported_traits), 0)
+  expect_equal(nrow(assoc@locations), 0)
+  expect_equal(nrow(assoc@mapped_genes), 0)
+})
+
+# --- Indexing --------------------------------------------------------------
+
+test_that("numeric and character indexing return matching subsets", {
   data <- list(
     list(association_id = "12345"),
     list(association_id = "67890"),
     list(association_id = "11111")
   )
   assoc <- Association(data, "Fat")
-  sub_assoc <- assoc[1]
-  expect_equal(length(sub_assoc), 1)
-  expect_equal(sub_assoc@raw_data[[1]]$association_id, "12345")
+
+  expect_equal(length(assoc[1]), 1)
+  expect_equal(assoc[1]@raw_data[[1]]$association_id, "12345")
+  expect_equal(length(assoc["12345"]), 1)
+  expect_equal(assoc["12345"]@raw_data[[1]]$association_id, "12345")
+  expect_equal(length(assoc[1:2]), 2)
+  expect_equal(length(assoc[c(1, 3)]), 2)
+  expect_equal(length(assoc[c("12345", "11111")]), 2)
+  expect_equal(length(assoc[]), 3)
 })
 
-# Test 7: Test indexing by character
-test_that("indexing by character returns correct subset", {
-  data <- list(
-    list(association_id = "12345"),
-    list(association_id = "67890")
-  )
-  assoc <- Association(data, "Fat")
-  sub_assoc <- assoc["12345"]
-  expect_equal(length(sub_assoc), 1)
-  expect_equal(sub_assoc@raw_data[[1]]$association_id, "12345")
+test_that("unknown id and out-of-bounds position raise errors", {
+  assoc <- Association(list(
+    list(association_id = "12345"), list(association_id = "67890")
+  ), "Fat")
+  expect_error(assoc["nope"])
+  expect_error(assoc[5])
 })
 
-# Test 8: Test addition operation
-test_that("addition combines two associations", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
-  combined <- assoc1 + assoc2
-  expect_equal(length(combined), 2)
+# --- Set operations --------------------------------------------------------
+
+test_that("addition concatenates records", {
+  assoc1 <- Association(list(list(association_id = "12345")), "Fat")
+  assoc2 <- Association(list(list(association_id = "67890")), "Fat")
+  expect_equal(length(assoc1 + assoc2), 2)
 })
 
-# Test 9: Test subtraction operation
-test_that("subtraction removes matching associations", {
-  data1 <- list(list(association_id = "12345"), list(association_id = "67890"))
-  data2 <- list(list(association_id = "12345"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
+test_that("subtraction removes matching records", {
+  assoc1 <- Association(list(
+    list(association_id = "12345"), list(association_id = "67890")
+  ), "Fat")
+  assoc2 <- Association(list(list(association_id = "12345")), "Fat")
   result <- assoc1 - assoc2
   expect_equal(length(result), 1)
   expect_equal(result@raw_data[[1]]$association_id, "67890")
+
+  assoc_other <- Association(list(list(association_id = "99999")), "Fat")
+  unchanged <- assoc1 - assoc_other
+  expect_equal(length(unchanged), 2)
+  expect_equal(unchanged@raw_data[[1]]$association_id, "12345")
+  expect_equal(unchanged@raw_data[[2]]$association_id, "67890")
 })
 
-# Test 10: Test intersection operation
-test_that("intersection returns common associations", {
-  data1 <- list(list(association_id = "12345"), list(association_id = "67890"))
-  data2 <- list(list(association_id = "67890"), list(association_id = "11111"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
+test_that("intersection returns records present in both", {
+  assoc1 <- Association(list(
+    list(association_id = "12345"), list(association_id = "67890")
+  ), "Fat")
+  assoc2 <- Association(list(
+    list(association_id = "67890"), list(association_id = "11111")
+  ), "Fat")
   result <- assoc1 & assoc2
   expect_equal(length(result), 1)
   expect_equal(result@raw_data[[1]]$association_id, "67890")
 })
 
-# Test 11: Test union operation
-test_that("union combines all unique associations", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
-  result <- assoc1 | assoc2
-  expect_equal(length(result), 2)
+test_that("union keeps unique records and xor keeps symmetric difference", {
+  assoc1 <- Association(list(
+    list(association_id = "12345"), list(association_id = "67890")
+  ), "Fat")
+  assoc2 <- Association(list(
+    list(association_id = "67890"), list(association_id = "11111")
+  ), "Fat")
+  expect_equal(length(assoc1 | assoc2), 3)
+  expect_equal(length(assoc1 ^ assoc2), 2)
 })
 
-# Test 12: Test XOR operation
-test_that("XOR returns symmetric difference", {
-  data1 <- list(list(association_id = "12345"), list(association_id = "67890"))
-  data2 <- list(list(association_id = "67890"), list(association_id = "11111"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
-  result <- assoc1 ^ assoc2
-  expect_equal(length(result), 2)
-})
-
-# Test 13: Test equality operation
-test_that("equality returns true for identical associations", {
+test_that("equality reflects raw_data identity and mode", {
   data <- list(list(association_id = "12345"))
-  assoc1 <- Association(data, "Fat")
-  assoc2 <- Association(data, "Fat")
-  expect_true(assoc1 == assoc2)
-})
-
-# Test 14: Test equality with different data
-test_that("equality returns false for different associations", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
-  expect_false(assoc1 == assoc2)
-})
-
-# Test 15: Test mode mismatch error for addition
-test_that("addition throws error for different modes", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Thin")
-  expect_error(assoc1 + assoc2)
-})
-
-# Test 16: Test mode mismatch error for subtraction
-test_that("subtraction throws error for different modes", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Thin")
-  expect_error(assoc1 - assoc2)
-})
-
-# Test 17: Test mode mismatch error for intersection
-test_that("intersection throws error for different modes", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Thin")
-  expect_error(assoc1 & assoc2)
-})
-
-# Test 18: Test mode mismatch error for union
-test_that("union throws error for different modes", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Thin")
-  expect_error(assoc1 | assoc2)
-})
-
-# Test 19: Test mode mismatch error for XOR
-test_that("XOR throws error for different modes", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "67890"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Thin")
-  expect_error(assoc1 ^ assoc2)
-})
-
-# Test 20: Test show method
-test_that("show method displays correct information", {
-  data <- list(
-    list(association_id = "12345", pvalue_mantissa = 1.5, pvalue_exponent = -8)
+  expect_true(Association(data, "Fat") == Association(data, "Fat"))
+  expect_false(
+    Association(data, "Fat") ==
+      Association(list(list(association_id = "67890")), "Fat")
   )
-  assoc <- Association(data, "Fat")
-  expect_output(show(assoc), "fat mode")
 })
 
-# Test 21: Test Thin mode show method
-test_that("show method displays Thin mode information", {
-  data <- list(
-    list(association_id = "12345", pvalue_mantissa = 1.5, pvalue_exponent = -8)
-  )
-  assoc <- Association(data, "Thin")
-  expect_output(show(assoc), "thin mode")
+test_that("set operations raise errors on mode mismatch", {
+  assoc_fat <- Association(list(list(association_id = "12345")), "Fat")
+  assoc_thin <- Association(list(list(association_id = "67890")), "Thin")
+  expect_error(assoc_fat + assoc_thin)
+  expect_error(assoc_fat - assoc_thin)
+  expect_error(assoc_fat & assoc_thin)
+  expect_error(assoc_fat | assoc_thin)
+  expect_error(assoc_fat ^ assoc_thin)
 })
 
-# Test 22: Test summary method
-test_that("summary method displays correct information", {
-  data <- list(
-    list(association_id = "12345", pvalue_mantissa = 1.5, pvalue_exponent = -8)
-  )
-  assoc <- Association(data, "Fat")
-  expect_output(summary(assoc), "Association Object Summary")
+# --- Methods: show, summary, names, length ---------------------------------
+
+test_that("show reports mode for Fat and Thin, empty and non-empty", {
+  expect_output(show(Association(
+    list(list(association_id = "12345")), "Fat"
+  )), "fat mode")
+  expect_output(show(Association(NULL, "Fat")), "fat mode")
+  expect_output(show(Association(
+    list(list(association_id = "12345")), "Thin"
+  )), "thin mode")
 })
 
-# Test 23: Test names method
-test_that("names method returns slot names", {
-  data <- list(list(association_id = "12345"))
-  assoc <- Association(data, "Fat")
-  expect_equal(names(assoc), c("raw_data", "mode", "associations", "efo_traits", "snp_allele",
-                               "bg_efo_traits", "reported_traits", "locations", "mapped_genes",
-                               "snp_effect_alleles"))
+test_that("summary lists the object summary", {
+  expect_output(summary(Association(
+    list(list(association_id = "12345")), "Fat"
+  )), "Association Object Summary")
 })
 
-# Test 25: Test empty efo_traits handling
-test_that("empty efo_traits is handled correctly", {
-  data <- list(
-    list(association_id = "12345", efo_traits = NULL)
-  )
-  assoc <- Association(data, "Fat")
-  expect_equal(nrow(assoc@efo_traits), 0)
-})
-
-# Test 26: Test multiple efo_traits handling
-test_that("multiple efo_traits are handled correctly", {
-  data <- list(
-    list(
-      association_id = "12345",
-      efo_traits = list(
-        list(efo_id = "EFO_0001", efo_trait = "Trait1"),
-        list(efo_id = "EFO_0002", efo_trait = "Trait2")
-      )
-    )
-  )
-  assoc <- Association(data, "Fat")
-  expect_equal(nrow(assoc@efo_traits), 2)
-})
-
-# Test 27: Test indexing with range
-test_that("indexing with range returns correct subset", {
-  data <- list(
-    list(association_id = "12345"),
-    list(association_id = "67890"),
-    list(association_id = "11111"),
-    list(association_id = "22222")
-  )
-  assoc <- Association(data, "Fat")
-  sub_assoc <- assoc[1:2]
-  expect_equal(length(sub_assoc), 2)
-})
-
-# Test 28: Test indexing with list
-test_that("indexing with list returns correct subset", {
-  data <- list(
-    list(association_id = "12345"),
-    list(association_id = "67890"),
-    list(association_id = "11111")
-  )
-  assoc <- Association(data, "Fat")
-  sub_assoc <- assoc[c(1, 3)]
-  expect_equal(length(sub_assoc), 2)
-})
-
-# Test 29: Test indexing by character vector
-test_that("indexing by character vector returns correct subset", {
-  data <- list(
-    list(association_id = "12345"),
-    list(association_id = "67890"),
-    list(association_id = "11111")
-  )
-  assoc <- Association(data, "Fat")
-  sub_assoc <- assoc[c("12345", "11111")]
-  expect_equal(length(sub_assoc), 2)
-})
-
-# Test 30: Test subtraction with no matching associations
-test_that("subtraction with no matching returns original", {
-  data1 <- list(list(association_id = "12345"))
-  data2 <- list(list(association_id = "99999"))
-  assoc1 <- Association(data1, "Fat")
-  assoc2 <- Association(data2, "Fat")
-  result <- assoc1 - assoc2
-  expect_equal(length(result), 1)
-  expect_equal(result@raw_data[[1]]$association_id, "12345")
+test_that("names returns the slot names and length counts raw records", {
+  assoc <- Association(list(
+    list(association_id = "12345"), list(association_id = "67890")
+  ), "Fat")
+  expect_equal(names(assoc), c(
+    "raw_data", "mode", "associations", "efo_traits", "snp_allele",
+    "bg_efo_traits", "reported_traits", "locations", "mapped_genes",
+    "snp_effect_alleles"
+  ))
+  expect_equal(length(assoc), 2)
 })

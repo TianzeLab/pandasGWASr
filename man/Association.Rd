@@ -7,13 +7,25 @@
 Association(data = NULL, mode = "Fat")
 }
 \arguments{
-\item{data}{A list of association data}
+\item{data}{A list of association records}
 
-\item{mode}{The mode of the association ("Fat" or "Thin")}
+\item{mode}{The mode of the object: "Fat" or "Thin"}
 }
 \value{
 An Association object
 }
 \description{
-This function creates an Association object.
+Creates an Association object from a list of raw records. To understand the
+significance of each column of the data.frames, visit "Association" in the
+GWAS Catalog documentation
+(https://www.ebi.ac.uk/gwas/rest/api/v2/docs/reference).
+}
+\examples{
+\dontrun{
+ch <- Association(
+  list(list(association_id = "169106883", pvalue_mantissa = 5)),
+  mode = "Fat"
+)
+}
+
 }

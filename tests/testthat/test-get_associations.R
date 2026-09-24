@@ -1,225 +1,104 @@
-# Test cases for get_associations function
+# Test cases ported from py/tests/test_get_associations.py
 
-library(testthat)
-
-# Test 1: Test get_associations with association_id
-test_that("get_associations returns data for association_id", {
+# Single association by association_id (Thin fetch is exercised first, then Fat)
+test_that("get_associations by association_id", {
   skip_if_offline()
 
-  assoc <- get_associations(association_id = "169106883", mode = "Thin")
-  expect_s4_class(assoc, "Association")
-  expect_equal(length(assoc), 1)
+  association_a <- get_associations(association_id = "169106883", mode = "Thin")
+  expect_s4_class(association_a, "Association")
+  expect_equal(association_a@mode, "Thin")
+
+  association_a <- get_associations(association_id = "169106883")
+  expect_equal(length(association_a), 1)
+  expect_equal(nrow(association_a@associations), 1)
+  expect_equal(association_a@associations$association_id[1], "169106883")
 })
 
-# Test 2: Test get_associations with association_id in Fat mode
-test_that("get_associations returns data for association_id in Fat mode", {
+# Query filters; each must return at least one association
+test_that("get_associations by query filters", {
   skip_if_offline()
 
-  assoc <- get_associations(association_id = "169106883")
-  expect_s4_class(assoc, "Association")
-  expect_equal(length(assoc), 1)
-  expect_equal(nrow(assoc@associations), 1)
+  association_b <- get_associations(pubmed_id = "35241825")
+  expect_true(length(association_b) >= 1)
+
+  association_c <- get_associations(rs_id = "rs3093017")
+  expect_true(length(association_c) >= 1)
+
+  association_d <- get_associations(accession_id = "GCST000854")
+  expect_true(length(association_d) >= 1)
+
+  association_e <- get_associations(efo_trait = "celiac disease")
+  expect_true(length(association_e) >= 1)
+
+  association_f <- get_associations(efo_id = "MONDO_0005130")
+  expect_true(length(association_f) >= 1)
+
+  association_g <- get_associations(mapped_gene = "CCR6")
+  expect_true(length(association_g) >= 1)
+
+  association_h <- get_associations(accession_id = "GCST000854",
+                                    full_pvalue_set = FALSE)
+  expect_true(length(association_h) >= 1)
+
+  association_i <- get_associations(efo_trait = "celiac disease",
+                                    show_child_trait = TRUE)
+  expect_true(length(association_i) >= 1)
+
+  association_j <- get_associations(mapped_gene = "CCR6",
+                                    extended_geneset = TRUE)
+  expect_true(length(association_j) >= 1)
 })
 
-# Test 3: Test get_associations with pubmed_id
-test_that("get_associations returns data for pubmed_id", {
+# Indexing: Python is 0-based, R is 1-based
+test_that("get_associations indexing", {
   skip_if_offline()
 
-  assoc <- get_associations(pubmed_id = "35241825")
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
+  association_a <- get_associations(association_id = "169106883")
+  association_b <- get_associations(accession_id = "GCST000854")
+
+  # assert association_a[0] == association_a
+  expect_true(association_a[1] == association_a)
+  # assert association_a['169106883'] == association_a
+  expect_true(association_a["169106883"] == association_a)
+
+  # assert len(association_b[0:2]) == 2
+  expect_equal(length(association_b[1:2]), 2)
+  # assert len(association_b[range(2)]) == 2
+  expect_equal(length(association_b[1:2]), 2)
+  # assert association_b[0] == association_b[association_b.raw_data[0]['association_id']]
+  expect_true(
+    association_b[1] ==
+      association_b[association_b@raw_data[[1]]$association_id]
+  )
 })
 
-# Test 4: Test get_associations with rs_id
-test_that("get_associations returns data for rs_id", {
+# Set operations on Association objects
+test_that("get_associations set operations", {
   skip_if_offline()
 
-  assoc <- get_associations(rs_id = "rs3093017")
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
+  association_a <- get_associations(association_id = "169106883")
+  association_b <- get_associations(accession_id = "GCST000854")
+
+  # assert len(association_a + association_b[0]) >= 1
+  expect_true(length(association_a + association_b[1]) >= 1)
+  # assert len(association_b - association_b[0]) == len(association_b) - 1
+  expect_equal(length(association_b - association_b[1]),
+               length(association_b) - 1)
+  # assert len(association_b & association_b[0]) == 1
+  expect_equal(length(association_b & association_b[1]), 1)
+  # assert len(association_b | association_b[0]) == len(association_b)
+  expect_equal(length(association_b | association_b[1]),
+               length(association_b))
+  # assert len(association_b ^ association_b[0]) == len(association_b) - 1
+  expect_equal(length(association_b ^ association_b[1]),
+               length(association_b) - 1)
 })
 
-# Test 5: Test get_associations with accession_id
-test_that("get_associations returns data for accession_id", {
+# Equality of independently fetched identical objects
+test_that("get_associations equality of repeated fetches", {
   skip_if_offline()
 
-  assoc <- get_associations(accession_id = "GCST000854")
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
-})
-
-# Test 6: Test get_associations with efo_trait
-test_that("get_associations returns data for efo_trait", {
-  skip_if_offline()
-
-  assoc <- get_associations(efo_trait = "celiac disease")
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
-})
-
-# Test 7: Test get_associations with efo_id
-test_that("get_associations returns data for efo_id", {
-  skip_if_offline()
-
-  assoc <- get_associations(efo_id = "EFO_0001060")
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
-})
-
-# Test 8: Test get_associations with mapped_gene
-test_that("get_associations returns data for mapped_gene", {
-  skip_if_offline()
-
-  assoc <- get_associations(mapped_gene = "CCR6,HBS1L")
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
-})
-
-# Test 9: Test get_associations with full_pvalue_set
-test_that("get_associations handles full_pvalue_set parameter", {
-  skip_if_offline()
-
-  assoc <- get_associations(accession_id = "GCST000854", full_pvalue_set = TRUE)
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 0)
-})
-
-# Test 10: Test get_associations with show_child_trait
-test_that("get_associations handles show_child_trait parameter", {
-  skip_if_offline()
-
-  assoc <- get_associations(efo_id = "EFO_0001060", show_child_trait = TRUE)
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
-})
-
-# Test 11: Test get_associations with extended_geneset
-test_that("get_associations handles extended_geneset parameter", {
-  skip_if_offline()
-
-  assoc <- get_associations(mapped_gene = "CCR6,HBS1L", extended_geneset = TRUE)
-  expect_s4_class(assoc, "Association")
-  expect_true(length(assoc) >= 1)
-})
-
-# Test 12: Test get_associations indexing by numeric
-test_that("get_associations supports numeric indexing", {
-  skip_if_offline()
-
-  assoc_a <- get_associations(association_id = "169106883")
-  assoc_b <- get_associations(accession_id = "GCST000854")
-
-  expect_equal(assoc_a[1], assoc_a)
-})
-
-# Test 13: Test get_associations indexing by character
-test_that("get_associations supports character indexing", {
-  skip_if_offline()
-
-  assoc_a <- get_associations(association_id = "169106883")
-  indexed_assoc <- assoc_a["169106883"]
-  expect_equal(indexed_assoc, assoc_a)
-})
-
-# Test 14: Test get_associations range indexing
-test_that("get_associations supports range indexing", {
-  skip_if_offline()
-
-  assoc_b <- get_associations(accession_id = "GCST000854")
-  expect_equal(length(assoc_b[1:2]), 2)
-})
-
-# Test 15: Test get_associations list indexing
-test_that("get_associations supports list indexing", {
-  skip_if_offline()
-
-  assoc_b <- get_associations(accession_id = "GCST000854")
-  expect_equal(length(assoc_b[seq(1, 2)]), 2)
-})
-
-# Test 16: Test get_associations addition
-test_that("get_associations supports addition operation", {
-  skip_if_offline()
-
-  assoc_a <- get_associations(association_id = "169106883")
-  assoc_b <- get_associations(accession_id = "GCST000854")
-
-  combined <- assoc_a + assoc_b[1]
-  expect_true(length(combined) >= 1)
-})
-
-# Test 17: Test get_associations subtraction
-test_that("get_associations supports subtraction operation", {
-  skip_if_offline()
-
-  assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b - assoc_b[1]
-  expect_equal(length(result), length(assoc_b) - 1)
-})
-
-# Test 18: Test get_associations intersection
-test_that("get_associations supports intersection operation", {
-  skip_if_offline()
-
-  assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b & assoc_b[1]
-  expect_equal(length(result), 1)
-})
-
-# Test 19: Test get_associations union
-test_that("get_associations supports union operation", {
-  skip_if_offline()
-
-  assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b | assoc_b[1]
-  expect_equal(length(result), length(assoc_b))
-})
-
-# Test 20: Test get_associations XOR
-test_that("get_associations supports XOR operation", {
-  skip_if_offline()
-
-  assoc_b <- get_associations(accession_id = "GCST000854")
-  result <- assoc_b ^ assoc_b[1]
-  expect_equal(length(result), length(assoc_b) - 1)
-})
-
-# Test 21: Test get_associations equality
-test_that("get_associations supports equality comparison", {
-  skip_if_offline()
-
-  assoc_c <- get_associations(association_id = "169106883")
-  assoc_a <- get_associations(association_id = "169106883")
-
-  expect_true(assoc_c == assoc_a)
-})
-
-# Test 22: Test get_associations with cached parameter FALSE
-test_that("get_associations handles cached parameter", {
-  skip_if_offline()
-
-  assoc_cached <- get_associations(association_id = "169106883", cached = TRUE)
-  assoc_not_cached <- get_associations(association_id = "169106883", cached = FALSE)
-
-  expect_s4_class(assoc_cached, "Association")
-  expect_s4_class(assoc_not_cached, "Association")
-  expect_equal(length(assoc_cached), length(assoc_not_cached))
-})
-
-# Test 23: Test get_associations with mode parameter Thin
-test_that("get_associations handles Thin mode", {
-  skip_if_offline()
-
-  assoc <- get_associations(association_id = "169106883", mode = "Thin")
-  expect_s4_class(assoc, "Association")
-  expect_equal(assoc@mode, "Thin")
-})
-
-# Test 24: Test get_associations with mode parameter Fat
-test_that("get_associations handles Fat mode", {
-  skip_if_offline()
-
-  assoc <- get_associations(association_id = "169106883", mode = "Fat")
-  expect_s4_class(assoc, "Association")
-  expect_equal(assoc@mode, "Fat")
+  association_a <- get_associations(association_id = "169106883")
+  association_c <- get_associations(association_id = "169106883")
+  expect_true(association_c == association_a)
 })
