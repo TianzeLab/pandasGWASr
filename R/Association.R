@@ -584,6 +584,17 @@ Association <- function(data = NULL, mode = "Fat") {
   return(obj)
 }
 
+#' Show an Association object
+#'
+#' Print a concise overview of an Association object: the current mode and
+#' the size of each data component. In Fat mode the row counts of the 8
+#' data.frames are listed; in Thin mode the size of the raw record list is
+#' shown.
+#'
+#' @param object An Association object
+#'
+#' @return None (called for its side effect of printing to the console)
+#'
 #' @export
 setMethod(
   "show",
@@ -612,6 +623,14 @@ setMethod(
   }
 )
 
+#' Length of an Association object
+#'
+#' Get the number of association records stored in the object.
+#'
+#' @param x An Association object
+#'
+#' @return An integer, the number of records in the raw_data slot
+#'
 #' @export
 setMethod(
   "length",
@@ -621,6 +640,14 @@ setMethod(
   }
 )
 
+#' Component names of an Association object
+#'
+#' Get the names of the components (slots) of an Association object.
+#'
+#' @param x An Association object
+#'
+#' @return A character vector of component names
+#'
 #' @export
 setMethod(
   "names",
@@ -641,6 +668,26 @@ setMethod(
   }
 )
 
+#' Subset an Association object
+#'
+#' Extract association records by position or by association identifier and
+#' return a new Association object of the same mode containing only the
+#' selected records.
+#'
+#' @param x An Association object
+#' @param i A numeric vector of positions (1-based) or a character vector of
+#'   association_ids. A list is unlisted before use, so a list of positions
+#'   or identifiers is also accepted. Leaving i missing returns x unchanged.
+#'
+#' @return An Association object containing the selected records
+#'
+#' @examples
+#' \dontrun{
+#' a <- get_associations(accession_id = "GCST000854")
+#' a[1]
+#' a["169106883"]
+#' }
+#'
 #' @export
 setMethod(
   "[",
@@ -691,6 +738,23 @@ setMethod(
   }
 )
 
+#' Concatenate Association objects
+#'
+#' Combine two Association objects of the same mode by concatenating their
+#' records, in the order of e1 then e2.
+#'
+#' @param e1 An Association object
+#' @param e2 An Association object
+#'
+#' @return An Association object of the same mode
+#'
+#' @examples
+#' \dontrun{
+#' a <- get_associations(efo_trait = "celiac disease")
+#' b <- get_associations(mapped_gene = "CCR6")
+#' c <- a + b
+#' }
+#'
 #' @export
 setMethod(
   "+",
@@ -704,6 +768,16 @@ setMethod(
   }
 )
 
+#' Difference of Association objects
+#'
+#' Return the records of e1 whose association_id does not appear in e2.
+#' Both objects must run in the same mode, otherwise an error is raised.
+#'
+#' @param e1 An Association object
+#' @param e2 An Association object
+#'
+#' @return An Association object of the same mode
+#'
 #' @export
 setMethod(
   "-",
@@ -740,6 +814,16 @@ setMethod(
   }
 )
 
+#' Intersection of Association objects
+#'
+#' Return the records of e1 whose association_id also appears in e2.
+#' Both objects must run in the same mode, otherwise an error is raised.
+#'
+#' @param e1 An Association object
+#' @param e2 An Association object
+#'
+#' @return An Association object of the same mode
+#'
 #' @export
 setMethod(
   "&",
@@ -776,6 +860,17 @@ setMethod(
   }
 )
 
+#' Union of Association objects
+#'
+#' Return the records of both objects deduplicated by association_id, with
+#' the record of e1 kept when both objects contain the same id. Both objects
+#' must run in the same mode, otherwise an error is raised.
+#'
+#' @param e1 An Association object
+#' @param e2 An Association object
+#'
+#' @return An Association object of the same mode
+#'
 #' @export
 setMethod(
   "|",
@@ -804,6 +899,17 @@ setMethod(
   }
 )
 
+#' Symmetric difference of Association objects
+#'
+#' Return the records whose association_id appears in exactly one of the two
+#' objects. Both objects must run in the same mode, otherwise an error is
+#' raised.
+#'
+#' @param e1 An Association object
+#' @param e2 An Association object
+#'
+#' @return An Association object of the same mode
+#'
 #' @export
 setMethod(
   "^",
@@ -843,6 +949,16 @@ setMethod(
   }
 )
 
+#' Compare Association objects for equality
+#'
+#' Test whether two Association objects are equal. Two objects are equal
+#' when they run in the same mode and store identical records.
+#'
+#' @param e1 An Association object
+#' @param e2 An Association object
+#'
+#' @return A logical value
+#'
 #' @export
 setMethod(
   "==",
@@ -855,6 +971,16 @@ setMethod(
   }
 )
 
+#' Summarize an Association object
+#'
+#' Print a summary of an Association object: the mode, the number of raw
+#' records, the number of associations and, in Fat mode, the row counts of
+#' all 8 data.frames.
+#'
+#' @param object An Association object
+#'
+#' @return None (called for its side effect of printing to the console)
+#'
 #' @export
 setMethod(
   "summary",
