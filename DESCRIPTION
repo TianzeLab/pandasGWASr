@@ -22,15 +22,15 @@ URL: https://github.com/TianzeLab/pandasGWASr
 BugReports: https://github.com/TianzeLab/pandasGWASr/issues
 License: GPL (>= 3)
 Encoding: UTF-8
-LazyData: true
 Depends: R (>= 4.0.0)
-Imports: 
+Imports:
     httr2,
     jsonlite,
     progress,
     utils,
     cachem,
-    rlang
+    rlang,
+    methods
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

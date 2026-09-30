@@ -15,6 +15,8 @@
 #' @slot mapped_genes data.frame
 #' @slot snp_effect_alleles data.frame
 #'
+#' @importFrom methods new
+#'
 #' @export
 #'
 setClass(
@@ -738,10 +740,20 @@ setMethod(
   }
 )
 
-#' Concatenate Association objects
+#' Set operations on Association objects
 #'
-#' Combine two Association objects of the same mode by concatenating their
-#' records, in the order of e1 then e2.
+#' Combine or compare two Association objects of the same mode as sets of
+#' association records, identified and deduplicated by association_id.
+#'
+#' `+` concatenates the records of both objects, in the order of e1 then
+#' e2. `-` returns the records of e1 whose association_id does not appear
+#' in e2 (difference). `&` returns the records of e1 whose association_id
+#' also appears in e2 (intersection). `|` returns the records of both
+#' objects deduplicated by association_id, keeping the record of e1 when
+#' both objects contain the same id (union). `^` returns the records whose
+#' association_id appears in exactly one of the two objects (symmetric
+#' difference). All operators raise an error when the two objects do not
+#' run in the same mode.
 #'
 #' @param e1 An Association object
 #' @param e2 An Association object
@@ -752,9 +764,14 @@ setMethod(
 #' \dontrun{
 #' a <- get_associations(efo_trait = "celiac disease")
 #' b <- get_associations(mapped_gene = "CCR6")
-#' c <- a + b
+#' a + b
+#' a - b
+#' a & b
+#' a | b
+#' a ^ b
 #' }
 #'
+#' @rdname set_operations
 #' @export
 setMethod(
   "+",
@@ -768,16 +785,7 @@ setMethod(
   }
 )
 
-#' Difference of Association objects
-#'
-#' Return the records of e1 whose association_id does not appear in e2.
-#' Both objects must run in the same mode, otherwise an error is raised.
-#'
-#' @param e1 An Association object
-#' @param e2 An Association object
-#'
-#' @return An Association object of the same mode
-#'
+#' @rdname set_operations
 #' @export
 setMethod(
   "-",
@@ -814,16 +822,7 @@ setMethod(
   }
 )
 
-#' Intersection of Association objects
-#'
-#' Return the records of e1 whose association_id also appears in e2.
-#' Both objects must run in the same mode, otherwise an error is raised.
-#'
-#' @param e1 An Association object
-#' @param e2 An Association object
-#'
-#' @return An Association object of the same mode
-#'
+#' @rdname set_operations
 #' @export
 setMethod(
   "&",
@@ -860,17 +859,7 @@ setMethod(
   }
 )
 
-#' Union of Association objects
-#'
-#' Return the records of both objects deduplicated by association_id, with
-#' the record of e1 kept when both objects contain the same id. Both objects
-#' must run in the same mode, otherwise an error is raised.
-#'
-#' @param e1 An Association object
-#' @param e2 An Association object
-#'
-#' @return An Association object of the same mode
-#'
+#' @rdname set_operations
 #' @export
 setMethod(
   "|",
@@ -899,17 +888,7 @@ setMethod(
   }
 )
 
-#' Symmetric difference of Association objects
-#'
-#' Return the records whose association_id appears in exactly one of the two
-#' objects. Both objects must run in the same mode, otherwise an error is
-#' raised.
-#'
-#' @param e1 An Association object
-#' @param e2 An Association object
-#'
-#' @return An Association object of the same mode
-#'
+#' @rdname set_operations
 #' @export
 setMethod(
   "^",

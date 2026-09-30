@@ -50,12 +50,21 @@ get_data <- function(url,
   if (cached && cache_impl$exists(hash(url))) {
     r <- cache_impl$get(hash(url))
   } else {
-    r <- httr2::request(url) |>
-      httr2::req_cookie_preserve(cookie_path) |>
-      httr2::req_headers(Accept = "application/json") |>
-      httr2::req_retry(max_tries = 6) |>
-      httr2::req_error(is_error = ~FALSE) |>
-      httr2::req_perform() # nolint
+    r <- httr2::req_perform(
+      httr2::req_error(
+        httr2::req_retry(
+          httr2::req_headers(
+            httr2::req_cookie_preserve(
+              httr2::request(url),
+              cookie_path
+            ),
+            Accept = "application/json"
+          ),
+          max_tries = 6
+        ),
+        is_error = ~FALSE
+      )
+    )
   }
 
   if (httr2::resp_status(r) == 200) {
@@ -100,12 +109,21 @@ get_data <- function(url,
           if (cached && cache_impl$exists(hash(next_url))) {
             r <- cache_impl$get(hash(next_url))
           } else {
-            r <- httr2::request(next_url) |>
-              httr2::req_cookie_preserve(cookie_path) |>
-              httr2::req_headers(Accept = "application/json") |>
-              httr2::req_retry(max_tries = 6) |>
-              httr2::req_error(is_error = ~FALSE) |>
-              httr2::req_perform()
+            r <- httr2::req_perform(
+              httr2::req_error(
+                httr2::req_retry(
+                  httr2::req_headers(
+                    httr2::req_cookie_preserve(
+                      httr2::request(next_url),
+                      cookie_path
+                    ),
+                    Accept = "application/json"
+                  ),
+                  max_tries = 6
+                ),
+                is_error = ~FALSE
+              )
+            )
           }
 
           if (httr2::resp_status(r) == 200) {

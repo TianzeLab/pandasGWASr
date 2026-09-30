@@ -29,6 +29,8 @@
 #' ch <- get_associations(association_id = "169106883")
 #' }
 #'
+#' @importFrom utils URLencode
+#'
 #' @export
 #'
 get_associations <- function(

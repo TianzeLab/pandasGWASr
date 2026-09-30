@@ -4,3 +4,9 @@
 ^LICENSE\.md$
 ^\.positai$
 ^\.claude$
+^\.vscode$
+^py$
+^AGENTS\.md$
+^debug\.R$
+^pandasGWASr\.Rcheck$
+^pandasGWASr_.*\.tar\.gz$
