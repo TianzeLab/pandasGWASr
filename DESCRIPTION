@@ -20,7 +20,7 @@ Description: An R client providing programmatic access to the
     the +, -, &, |, ^ and == operators.
 URL: https://github.com/TianzeLab/pandasGWASr
 BugReports: https://github.com/TianzeLab/pandasGWASr/issues
-License: GPL (>= 3)
+License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.0.0)
 Imports:

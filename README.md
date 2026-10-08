@@ -182,7 +182,7 @@ is_API_available()  # TRUE if the GWAS Catalog API responds with HTTP 200
 
 ### Source code
 
-This package is licensed under the GPL (>= 3).
+This package is licensed under the MIT License.
 
 ### Data from NHGRI-EBI GWAS Catalog
 
