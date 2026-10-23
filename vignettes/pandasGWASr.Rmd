@@ -37,7 +37,7 @@ print("Setup complete. pandasGWASr is ready to use.")
 
 Below we have some sample questions and how to answer them using pandasGWASr.
 
-Note that in all questions below, we use the EFO traits for the diseases and traits. For more information, please visit https://www.ebi.ac.uk/efo/
+Note that in all questions below, we use the EFO traits for the diseases and traits. For more information, please visit <https://www.ebi.ac.uk/efo/>
 
 ### Question 1: What variants are associated with a specific disease, e.g. type 2 diabetes?
 
