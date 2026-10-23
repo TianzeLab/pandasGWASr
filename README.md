@@ -163,9 +163,9 @@ df <- summary_statistics$parse(search_DF)
 All API responses are cached in memory for 24 hours. Two functions control the cache:
 
 ```r
-# Clear all caches (or pass a specific cache name)
+# Clear all caches (or pass a specific entity name)
 clear_cache()
-clear_cache("association_cache")
+clear_cache("Association")
 
 # Reinitialise a specific cache or all caches with custom size/ttl
 reinit_cache(field = "Association", maxsize = 4 * 1024, ttl = 60 * 60)

@@ -2,13 +2,13 @@
 % Please edit documentation in R/zzz.R
 \name{clear_cache}
 \alias{clear_cache}
-\title{Clear cache}
+\title{Clear some or all of the cache pools}
 \usage{
-clear_cache(cache_name = "all")
+clear_cache(field = "All")
 }
 \arguments{
-\item{cache_name}{The name of the cache to clear, or "all" to clear all caches}
+\item{field}{It can be one of the following: 'All', 'Association', 'Study', 'Trait', 'Snp', 'Ancestry', 'Publication', 'GenomicContext', 'Gene', 'Locus'}
 }
 \description{
-This function clears the cache for the specified data type or all caches.
+This function clears some or all of the cache pools.
 }

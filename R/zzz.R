@@ -21,30 +21,48 @@
   .pandasGWASr$locus_cache <- cache_mem(max_age = ttl)
 }
 
-#' Clear cache
+#' Clear some or all of the cache pools
 #'
-#' This function clears the cache for the specified data type or all caches.
+#' This function clears some or all of the cache pools.
 #'
-#' @param cache_name The name of the cache to clear, or "all" to clear all caches
+#' @param field It can be one of the following: 'All', 'Association', 'Study', 'Trait', 'Snp', 'Ancestry', 'Publication', 'GenomicContext', 'Gene', 'Locus'
 #'
 #' @export
-clear_cache <- function(cache_name = "all") {
-  if (cache_name == "all") {
-    # 清除所有缓存
-    cache_names <- c("association_cache", "study_cache", "trait_cache", 
-                    "snp_cache", "ancestry_cache", "publication_cache", 
-                    "genomicContext_cache", "gene_cache", "locus_cache")
-    for (name in cache_names) {
-      if (exists(name, envir = .pandasGWASr)) {
-        cache <- get(name, envir = .pandasGWASr)
-        cache$reset()
-      }
-    }
-  } else {
-    # 清除指定缓存
-    if (exists(cache_name, envir = .pandasGWASr)) {
-      cache <- get(cache_name, envir = .pandasGWASr)
-      cache$reset()
-    }
+#'
+clear_cache <- function(field = "All") {
+  fields_and_all <- c("All", "Association", "Study", "Trait", "Snp", "Ancestry", "Publication", "GenomicContext", "Gene", "Locus")
+
+  if (!field %in% fields_and_all) {
+    stop(paste("The field must be one of", paste(fields_and_all, collapse = ", ")))
+  }
+
+  if (field == "Association") {
+    .pandasGWASr$association_cache$reset()
+  } else if (field == "Study") {
+    .pandasGWASr$study_cache$reset()
+  } else if (field == "Trait") {
+    .pandasGWASr$trait_cache$reset()
+  } else if (field == "Snp") {
+    .pandasGWASr$snp_cache$reset()
+  } else if (field == "Ancestry") {
+    .pandasGWASr$ancestry_cache$reset()
+  } else if (field == "Publication") {
+    .pandasGWASr$publication_cache$reset()
+  } else if (field == "GenomicContext") {
+    .pandasGWASr$genomicContext_cache$reset()
+  } else if (field == "Gene") {
+    .pandasGWASr$gene_cache$reset()
+  } else if (field == "Locus") {
+    .pandasGWASr$locus_cache$reset()
+  } else { # All
+    .pandasGWASr$association_cache$reset()
+    .pandasGWASr$study_cache$reset()
+    .pandasGWASr$trait_cache$reset()
+    .pandasGWASr$snp_cache$reset()
+    .pandasGWASr$ancestry_cache$reset()
+    .pandasGWASr$publication_cache$reset()
+    .pandasGWASr$genomicContext_cache$reset()
+    .pandasGWASr$gene_cache$reset()
+    .pandasGWASr$locus_cache$reset()
   }
 }
