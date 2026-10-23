@@ -49,16 +49,6 @@ Nine high-level functions cover every GWAS Catalog entity. Each accepts filter p
 
 `get_associations()` is unique in supporting both an `association_id` path lookup and query filters in the same call — when both are supplied the intersection is returned.
 
-### Low-level requests
-
-Single-object requests by full URL are available via `get_association()`, `get_study()`, `get_trait()`, `get_snp()`, `get_ancestry()`, `get_publication()`, `get_genomicContext()`, `get_gene()` and `get_locus()`.
-
-```r
-trait <- get_trait(
-  "https://www.ebi.ac.uk/gwas/rest/api/v2/efo-traits/EFO_0009713"
-)
-```
-
 ## Data objects (S4 classes)
 
 Each query function returns an S4 object of the corresponding class: `Association`, `Study`, `Trait`, `Snp`, `Gene`, `Publication`, `Ancestry`, `Locus`, `GenomicContext`.

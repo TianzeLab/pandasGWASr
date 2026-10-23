@@ -259,17 +259,7 @@ get_data <- function(url,
     ))
   }
 }
-#' Get association data
-#'
-#' This function retrieves association data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of association objects retrieved from the API
-#'
-#' @export
-#'
+
 get_association <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -281,17 +271,6 @@ get_association <- function(url, cached = TRUE) {
   )
 }
 
-#' Get study data
-#'
-#' This function retrieves study data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of study objects retrieved from the API
-#'
-#' @export
-#'
 get_study <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -303,17 +282,6 @@ get_study <- function(url, cached = TRUE) {
   )
 }
 
-#' Get trait data
-#'
-#' This function retrieves trait data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of trait objects retrieved from the API
-#'
-#' @export
-#'
 get_trait <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -325,17 +293,6 @@ get_trait <- function(url, cached = TRUE) {
   )
 }
 
-#' Get SNP data
-#'
-#' This function retrieves SNP data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of SNP objects retrieved from the API
-#'
-#' @export
-#'
 get_snp <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -347,17 +304,6 @@ get_snp <- function(url, cached = TRUE) {
   )
 }
 
-#' Get ancestry data
-#'
-#' This function retrieves ancestry data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of ancestry objects retrieved from the API
-#'
-#' @export
-#'
 get_ancestry <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -369,17 +315,6 @@ get_ancestry <- function(url, cached = TRUE) {
   )
 }
 
-#' Get publication data
-#'
-#' This function retrieves publication data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of publication objects retrieved from the API
-#'
-#' @export
-#'
 get_publication <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -391,17 +326,6 @@ get_publication <- function(url, cached = TRUE) {
   )
 }
 
-#' Get genomic context data
-#'
-#' This function retrieves genomic context data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of genomic context objects retrieved from the API
-#'
-#' @export
-#'
 get_genomicContext <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -413,17 +337,6 @@ get_genomicContext <- function(url, cached = TRUE) {
   )
 }
 
-#' Get gene data
-#'
-#' This function retrieves gene data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of gene objects retrieved from the API
-#'
-#' @export
-#'
 get_gene <- function(url, cached = TRUE) {
   return(
     get_data(
@@ -435,17 +348,6 @@ get_gene <- function(url, cached = TRUE) {
   )
 }
 
-#' Get locus data
-#'
-#' This function retrieves locus data from the GWAS API.
-#'
-#' @param url The URL to request data from
-#' @param cached Logical value indicating whether to use cached responses
-#'
-#' @return A list of locus objects retrieved from the API
-#'
-#' @export
-#'
 get_locus <- function(url, cached = TRUE) {
   return(
     get_data(
