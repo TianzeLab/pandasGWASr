@@ -28,7 +28,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          packages: all
+          dependencies: true
           extra-packages: pkgdown
 
       - name: Build pkgdown site
